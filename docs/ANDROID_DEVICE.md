@@ -93,3 +93,55 @@ This matches the 4 s main-track timeline (two halves of the same clip). Overlay 
 2. Attach **this** file `PixelCut-Android-0.1.0-beta.1.apk` (hash `1FE4A4B0…`) only after P0 licence / corresponding-source decisions — **not** done in Fase 10.
 3. Release notes must say: Android export is **main track only** (Media3). Preview can show overlays/text that will not be in the MP4.
 4. This report is **technical**. It is not legal clearance and not a GitHub publish.
+
+---
+
+# Relato da hotfix 0.1.0-beta.2 — 29 de outubro de 2026
+
+**Não é publicação no GitHub.** APK assinado com a **mesma** keystore da beta.1. Sem segunda chave. Sem desinstalar. Sem `pm clear`. Sem apagar projetos.
+
+## APK
+
+| Campo | Valor |
+|---|---|
+| Staging | `%LOCALAPPDATA%\PixelCut\staging\PixelCut-Android-0.1.0-beta.2.apk` |
+| Build | `PixelCut/android/app/build/outputs/apk/release/PixelCut-Android-0.1.0-beta.2.apk` |
+| Bytes | 6 533 933 |
+| SHA-256 | `EA6CAA2EEEADA4C11B21B8CC253FAEEC20CAECF0AA91736E38ED527ACCB1D606` |
+| `apksigner verify` | **Verifies** (v2) |
+| versionName / versionCode | `0.1.0-beta.2` / `2` |
+| Certificado SHA-256 | `48e79a8fa8ec49514f2ff7ce032f6b2d40b87a1457ed6f20ad168e32461c7d0b` (igual à beta.1) |
+
+## Atualização no Galaxy A54 (SM-A546E, Android 16)
+
+| Campo | Antes | Depois |
+|---|---|---|
+| versionName | `0.1.0-beta.1` | `0.1.0-beta.2` |
+| versionCode | `1` | `2` |
+| firstInstallTime | `2026-10-29 13:12:44` | `2026-10-29 13:12:44` (inalterado) |
+| lastUpdateTime | `2026-10-29 13:12:44` | `2026-10-29 18:45:43` |
+| userId | 10282 | 10282 |
+
+`adb install -r` sobre a beta.1: sucesso. Os recentes da beta.1 reapareceram (projeto com duração 02:16.60).
+
+## Testes reais neste aparelho (hotfix)
+
+Executados:
+
+1. Instalar beta.2 por cima da beta.1 — projetos preservados.
+2. Arranque a frio — o projeto antigo abriu com o clipe na faixa V e preview.
+3. `am force-stop` + abrir de novo — o vídeo continuou na timeline; o playhead 01:44.35 foi restaurado.
+4. Reproduzir — o relógio avançou (00:37.75 / 02:16.60) e o preview mudou de quadro.
+5. Exportar MP4 da mídia restaurada — `Movies/PixelCut/PixelCut-20261029-185604.mp4` (103 903 697 bytes).
+6. ffprobe: H.264 High 1280×720, AAC-LC, duração 136,65 s (bate com 02:16.60 da timeline).
+7. Ícone oficial visível no cabeçalho do app (tesoura + play). Os mipmaps adaptive/round do APK vêm de `assets/icon.png`.
+
+Não executados de forma destrutiva neste aparelho (cobertos por testes automatizados, sem apagar o trabalho do titular):
+
+- Arquivo original movido no armazenamento compartilhado (a cópia privada deve bastar).
+- URI `content://` expirada sem cópia.
+- Disco cheio na importação.
+
+O corte visual em dois clipes magnéticos não foi confirmado com clareza na captura (a faixa principal fica contínua). A reprodução, o playhead persistido e a exportação após `force-stop` foram confirmados.
+
+Avisos da exportação (inesperados / já documentados): a faixa principal entra no arquivo; sobreposição, texto, chroma, efeitos do catálogo, voz e faixa de música separada não entram.

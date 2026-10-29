@@ -1,58 +1,67 @@
-# PixelCut Android — v0.1.0-beta.1
+# PixelCut Android — v0.1.0-beta.2
 
-Sideload beta. This is not a Play Store listing.
+Sideload. Isto não é um anúncio da Play Store.
 
-## What works in the app
+A `v0.1.0-beta.1` continua válida. Esta hotfix **substitui só o APK Android** (`versionCode` 2) e não altera o instalador Windows.
 
-- Recents: create, open, rename, duplicate, delete projects (app-private storage)
-- Import video, image, and audio through the system document picker
-- Timeline editing: trim, split, arrange clips, text, overlays, effects in the **preview**
-- Playback on the device player
-- Autosave in the app’s private directory (uninstalling the app removes that copy)
-- Export MP4 with AndroidX Media3 Transformer **1.11.1**
+## O que a hotfix corrige
 
-## Export limitation (unchanged)
+- Ícone launcher / adaptive / round: identidade oficial do PixelCut (tesoura + play em pixel art), gerada a partir de `assets/icon.png`.
+- Vídeos importados sobrevivem ao fechar o aplicativo: cópia privada em `files/media`, flush do projeto no `pause`, reconstrução da URL de reprodução ao reabrir.
+- Autosave recusa gravar um projeto vazio por cima de um projeto com mídia.
+- Mídia ausente: o clipe permanece; o usuário pode localizar o arquivo de novo.
 
-Android export writes **only the main video track**: cut, sequence, stills, speed, and the original audio of that video.
+## O que funciona no app
 
-**Not written into the Android MP4:** transitions, overlays, titles, chroma key, catalog visual effects, the voice-effect chain, or the separate music track. The preview can show more than the file you get.
+- Recentes: criar, abrir, renomear, duplicar, apagar projetos (armazenamento privado)
+- Importar vídeo, imagem e áudio pelo seletor de documentos do sistema (SAF); o arquivo original não é apagado
+- Edição na timeline: corte, divisão, clipes, texto, sobreposições, efeitos no **preview**
+- Reprodução no aparelho
+- Autosave; desinstalar o app apaga essa cópia
+- Exportar MP4 com AndroidX Media3 Transformer **1.11.1**
 
-## Requirements
+## Limitação da exportação (inalterada)
 
-- Android **7.0** (API 24) or later
+A exportação Android grava **somente a faixa principal de vídeo**: corte, sequência, imagens paradas, velocidade e o áudio original desse vídeo.
+
+**Não entram no MP4 do Android:** transições, sobreposições, títulos, chroma key, efeitos visuais do catálogo, cadeia de efeitos de voz nem a faixa de música separada. O preview pode mostrar mais do que o arquivo.
+
+## Requisitos
+
+- Android **7.0** (API 24) ou posterior
 - `applicationId` `com.pixelcut.editor`
 - `targetSdk` 36
-- Internet only for Google Fonts in the text preview
+- Internet só para as Google Fonts no preview de texto
 
-## Install (signed APK)
+## Atualizar da beta.1
 
-1. If an older **debug** PixelCut is already on the phone, uninstall it first (that **deletes** app-private projects). A debug and a release build cannot coexist under `com.pixelcut.editor`.
-2. Enable “Install unknown apps” for the browser or Files app you use to open the APK.
-3. Open `PixelCut-Android-0.1.0-beta.1.apk`.
-4. Confirm SHA-256 `1FE4A4B01B212AB2E7D4BCA7AE73D72568E66DE5396E92FDE5707723BC054F18`.
-5. Unknown-source / Play Protect warnings are expected for a GitHub sideload.
+1. **Não** desinstale. **Não** limpe os dados do aplicativo.
+2. Instale `PixelCut-Android-0.1.0-beta.2.apk` por cima (`adb install -r` ou o instalador de APK).
+3. Confira o SHA-256 `EA6CAA2EEEADA4C11B21B8CC253FAEEC20CAECF0AA91736E38ED527ACCB1D606`.
+4. Abra um projeto antigo: o vídeo deve voltar à timeline.
 
-Do **not** install `app-debug.apk`.
+Se a instalação for recusada com `INSTALL_FAILED_UPDATE_INCOMPATIBLE`, existe um PixelCut assinado com **outra** chave (debug). Desinstalar nesse caso apaga os projetos privados.
 
-## Current local build (not uploaded)
+Não instale `app-debug.apk`.
 
-| Field | Value |
-|---|---|
-| Staging | `%LOCALAPPDATA%\PixelCut\staging\PixelCut-Android-0.1.0-beta.1.apk` |
-| SHA-256 | `1FE4A4B01B212AB2E7D4BCA7AE73D72568E66DE5396E92FDE5707723BC054F18` |
-| Size | 6 267 993 bytes |
-| Signature | APK Signature Scheme v2; `apksigner verify` OK |
+## Build local (ainda não publicado no GitHub)
 
-**Device test (29 October 2026):** this signed APK was installed on a Galaxy A54 5G (SM-A546E, Android 16) after the old debug 1.0 build was uninstalled. Import MP4 → add to V1 → play → split → save/reopen → Media3 export succeeded (H.264 High 1280×720 + AAC-LC). See [ANDROID_DEVICE.md](ANDROID_DEVICE.md). Signing backup: [ANDROID_SIGNING.md](ANDROID_SIGNING.md).
+| Campo | beta.2 (hotfix) | beta.1 (permanece disponível) |
+|---|---|---|
+| Staging | `%LOCALAPPDATA%\PixelCut\staging\PixelCut-Android-0.1.0-beta.2.apk` | `%LOCALAPPDATA%\PixelCut\staging\PixelCut-Android-0.1.0-beta.1.apk` |
+| SHA-256 | `EA6CAA2EEEADA4C11B21B8CC253FAEEC20CAECF0AA91736E38ED527ACCB1D606` | `1FE4A4B01B212AB2E7D4BCA7AE73D72568E66DE5396E92FDE5707723BC054F18` |
+| Tamanho | 6 533 933 bytes | 6 267 993 bytes |
+| versionName / versionCode | `0.1.0-beta.2` / `2` | `0.1.0-beta.1` / `1` |
+| Assinatura | v2, mesmo certificado | v2 |
 
-Android omitted-track warnings currently appear **after** export in `ExportDialog`, not as a blocking confirm beforehand. That pre-export confirm is an open UI item; this signed APK was not rebuilt for it.
+**Teste no aparelho (29 de outubro de 2026):** a beta.2 foi instalada **por cima** da beta.1 num Galaxy A54 5G (SM-A546E, Android 16), sem desinstalar e sem limpar dados. `firstInstallTime` permaneceu `2026-10-29 13:12:44`. O projeto recente reabriu com o vídeo na faixa principal, reproduziu, e a exportação Media3 gerou `Movies/PixelCut/PixelCut-20261029-185604.mp4` (H.264 High 1280×720 + AAC-LC, 136,65 s). Relato: [ANDROID_DEVICE.md](ANDROID_DEVICE.md). Assinatura: [ANDROID_SIGNING.md](ANDROID_SIGNING.md).
 
-## Security
+## Segurança
 
-- Keep the release `.jks` and `keystore.properties` off Git.
-- PixelCut Android does **not** ship FFmpeg. Media3 is Apache-2.0 (see `THIRD_PARTY_NOTICES.md`).
-- Original editor code is MIT, Copyright (c) 2026 Kaell Soares Calacina.
+- Mantenha o `.jks` de release e o `keystore.properties` fora do Git.
+- O PixelCut Android **não** embarca FFmpeg. O Media3 é Apache-2.0 (veja `THIRD_PARTY_NOTICES.md`).
+- O código original do editor é MIT, Copyright (c) 2026 Kaell Soares Calacina.
 
 ## Bugs
 
-GitHub Issues on this repository, template “Bug”, platform Android. Include the APK SHA-256. Do not attach personal videos, keystores, or `.env` files. The GitHub owner is not stored in this tree, so no issue URL is invented here.
+Issues no GitHub deste repositório, modelo “Bug”, plataforma Android. Inclua o SHA-256 do APK. Não anexe vídeos pessoais, keystores nem `.env`.

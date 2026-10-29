@@ -390,7 +390,14 @@ export function historyReducer(state, a) {
 }
 
 export function toFileUrl(p) {
+  if (!p || typeof p !== 'string') return '';
   if (/^(blob:|data:|https?:|capacitor:|content:)/i.test(p)) return p;
+  if (p.startsWith('/') && typeof window !== 'undefined' && typeof window.Capacitor?.convertFileSrc === 'function') {
+    const converted = window.Capacitor.convertFileSrc(p);
+    if (converted && converted !== p && /^(https?:|capacitor:|content:)/i.test(converted)) return converted;
+    const prefixed = window.Capacitor.convertFileSrc(`file://${p}`);
+    if (prefixed && prefixed !== p && /^(https?:|capacitor:|content:)/i.test(prefixed)) return prefixed;
+  }
   const parts = p.replace(/\\/g, '/').split('/');
   return 'file:///' + parts.map((s, i) => (i === 0 && /^[a-zA-Z]:$/.test(s) ? s : encodeURIComponent(s))).join('/');
 }

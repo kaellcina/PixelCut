@@ -74,7 +74,7 @@ export default function App() {
   timeRef.current = time;
 
   const autosave = useMemo(() => createAutosave({
-    delay: 700,
+    delay: platform.kind() === 'android' ? 250 : 700,
     save: async (payload) => {
       await platform.persistProject(payload);
     },
@@ -110,7 +110,11 @@ export default function App() {
       { id: session.id, project, playhead: timeRef.current },
       fingerprint(project, timeRef.current),
     );
-    return undefined;
+    if (platform.kind() !== 'android') return undefined;
+    const timer = setTimeout(() => {
+      autosave.flush();
+    }, 0);
+    return () => clearTimeout(timer);
   }, [autosave, project, session]);
 
   useEffect(() => {

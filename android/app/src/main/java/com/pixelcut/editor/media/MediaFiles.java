@@ -15,6 +15,8 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.UnsupportedEncodingException;
+import java.net.URLDecoder;
 import java.util.Locale;
 import java.util.UUID;
 
@@ -32,11 +34,42 @@ public final class MediaFiles {
         return dir;
     }
 
+    public static String unwrapSource(String raw) {
+        if (raw == null) return "";
+        String value = raw.trim();
+        if (value.isEmpty()) return "";
+        String[] markers = new String[] {"/_capacitor_file_", "/_capacitor_content_"};
+        for (String marker : markers) {
+            int at = value.indexOf(marker);
+            if (at >= 0) {
+                String rest = value.substring(at + marker.length());
+                try {
+                    rest = URLDecoder.decode(rest, "UTF-8");
+                } catch (UnsupportedEncodingException | IllegalArgumentException ignored) {
+                    // Keep the raw suffix when it is not percent-encoded.
+                }
+                if (rest.startsWith("file:")) return unwrapSource(rest);
+                if (!rest.isEmpty() && !rest.startsWith("/")) rest = "/" + rest;
+                return rest;
+            }
+        }
+        if (value.startsWith("file:")) {
+            Uri uri = Uri.parse(value);
+            String path = uri.getPath();
+            return path == null || path.isEmpty() ? value.replaceFirst("^file://", "") : path;
+        }
+        if (value.startsWith("content:") || value.startsWith("http:") || value.startsWith("https:") || value.startsWith("capacitor:")) {
+            return "";
+        }
+        return value;
+    }
+
     public static File requireOwned(Context context, String source) throws IOException {
-        if (source == null || source.trim().isEmpty()) {
+        String path = unwrapSource(source);
+        if (path == null || path.trim().isEmpty()) {
             throw new IOException("Um clipe não tem arquivo salvo. Importe a mídia de novo.");
         }
-        File file = new File(source);
+        File file = new File(path);
         File root = mediaDir(context);
         String canonical = file.getCanonicalPath();
         String owned = root.getCanonicalPath();
@@ -44,17 +77,22 @@ public final class MediaFiles {
             throw new IOException("A mídia precisa estar na pasta privada do PixelCut. Importe o arquivo de novo.");
         }
         if (!file.isFile()) {
-            throw new IOException("O arquivo não está mais no aparelho. Importe a mídia de novo.");
+            throw new IOException("O arquivo não está mais no aparelho. Localize a mídia de novo; o clipe permanece no projeto.");
         }
         return file;
     }
 
-    public static boolean exists(Context context, String source) {
+    public static File findOwned(Context context, String source) {
         try {
-            return requireOwned(context, source).isFile();
+            return requireOwned(context, source);
         } catch (IOException error) {
-            return false;
+            return null;
         }
+    }
+
+    public static boolean exists(Context context, String source) {
+        File file = findOwned(context, source);
+        return file != null && file.isFile();
     }
 
     public static boolean deleteOwned(Context context, String source) {

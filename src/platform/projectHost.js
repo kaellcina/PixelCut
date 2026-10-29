@@ -1,7 +1,9 @@
 import { Capacitor, registerPlugin } from '@capacitor/core';
 import { createProjectRepository } from '../projects/repository.js';
 import { inspectMedia } from '../projects/schema.js';
+import { applyAndroidRestore } from './androidRestore.js';
 import { createCapacitorStore, createIpcStore, createLocalStorageStore } from './fsStore.js';
+import { mediaOwnedPath, persistableProject, wouldEmptyOverwrite } from './mediaPath.js';
 import { platformKind } from './runtime.js';
 
 let nativePlugin = null;
@@ -41,9 +43,12 @@ export async function mediaExists(item) {
     return !!(file && window.api?.mediaExists?.(file));
   }
   if (kind === 'android') {
-    if (!item?.source) return false;
+    const source = mediaOwnedPath(item) || item?.source || item?.path || '';
+    if (!source) return false;
     try {
-      const result = await getPixelCutPlugin().restoreMedia({ sources: [item.source] });
+      const result = await getPixelCutPlugin().restoreMedia({
+        items: [{ id: item?.id || '', source, path: item?.path || '' }],
+      });
       return !!result?.items?.[0]?.ok;
     } catch {
       return false;
@@ -59,22 +64,18 @@ export async function restoreManagedProject(project) {
     const media = project?.media || [];
     let status = [];
     try {
-      const result = await getPixelCutPlugin().restoreMedia({ sources: media.map((item) => item?.source || '') });
+      const result = await getPixelCutPlugin().restoreMedia({
+        items: media.map((item) => ({
+          id: item?.id || '',
+          source: item?.source || '',
+          path: item?.path || '',
+        })),
+      });
       status = result?.items || [];
     } catch (error) {
       throw new Error(error?.message || 'Não foi possível verificar os arquivos do projeto.');
     }
-    const ok = new Map(media.map((item, index) => [item?.id, !!status[index]?.ok]));
-    const inspected = inspectMedia(project, (item) => ok.get(item.id) === true);
-    inspected.project = {
-      ...inspected.project,
-      media: inspected.project.media.map((item) => (
-        item.missing || !item.source
-          ? { ...item, path: '' }
-          : { ...item, path: Capacitor.convertFileSrc(item.source) }
-      )),
-    };
-    return inspected;
+    return applyAndroidRestore(project, status, (file) => Capacitor.convertFileSrc(file));
   }
   const inspected = inspectMedia(project, (item) => {
     if (kind === 'electron') return !!(item?.path && window.api?.mediaExists?.(item.path));
@@ -99,7 +100,20 @@ export async function loadProject(id) {
 }
 
 export async function persistProject(input) {
-  return (await getProjectRepository()).saveProject(input);
+  const repo = await getProjectRepository();
+  if (platformKind() !== 'android') return repo.saveProject(input);
+  const project = persistableProject(input.project);
+  if (input.id) {
+    try {
+      const previous = await repo.loadProject(input.id);
+      if (wouldEmptyOverwrite(previous.project, project)) {
+        throw new Error('O PixelCut recusou gravar um projeto vazio por cima de um projeto com mídia. Reabra o projeto.');
+      }
+    } catch (error) {
+      if (/recusou gravar um projeto vazio/.test(error?.message || '')) throw error;
+    }
+  }
+  return repo.saveProject({ ...input, project });
 }
 
 export async function renameProject(id, name) {
@@ -129,5 +143,5 @@ export async function importProjectJson(text) {
 }
 
 export function androidPersistenceNote() {
-  return 'Os projetos e as mídias importadas ficam no armazenamento privado do PixelCut. Desinstalar o aplicativo apaga esses arquivos. Exporte o vídeo para conservá-lo fora do aplicativo.';
+  return 'Ao importar, o PixelCut copia o vídeo para o armazenamento privado do aplicativo. Os projetos sobrevivem ao fechar o app. Desinstalar o PixelCut apaga essas cópias. Exporte o MP4 para guardar o vídeo fora do aplicativo.';
 }

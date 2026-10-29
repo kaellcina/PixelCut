@@ -58,26 +58,35 @@ Notas do produto: [ANDROID.md](ANDROID.md). Assinatura: [ANDROID_SIGNING.md](AND
 
 **Mínimo:** Android 7.0 (API 24). `applicationId` `com.pixelcut.editor`.
 
-### Build assinado
+### Build assinado (hotfix 0.1.0-beta.2)
 
 | Campo | Valor |
 |---|---|
-| Nome | `PixelCut-Android-0.1.0-beta.1.apk` |
-| Bytes | 6 267 993 |
-| SHA-256 | `1FE4A4B01B212AB2E7D4BCA7AE73D72568E66DE5396E92FDE5707723BC054F18` |
-| Assinatura | v2, `apksigner verify` OK. Pacote `com.pixelcut.editor`, versão `0.1.0-beta.1`, minSdk 24. |
+| Nome | `PixelCut-Android-0.1.0-beta.2.apk` |
+| Bytes | 6 533 933 |
+| SHA-256 | `EA6CAA2EEEADA4C11B21B8CC253FAEEC20CAECF0AA91736E38ED527ACCB1D606` |
+| Assinatura | v2, `apksigner verify` OK. Pacote `com.pixelcut.editor`, versão `0.1.0-beta.2`, `versionCode` 2, minSdk 24. Mesma keystore da beta.1. |
+
+A beta.1 (`PixelCut-Android-0.1.0-beta.1.apk`, SHA-256 `1FE4A4B01B212AB2E7D4BCA7AE73D72568E66DE5396E92FDE5707723BC054F18`) **permanece disponível**. Não altere os anexos daquela versão.
 
 **Não** distribua `app-debug.apk`. Não use o hash antigo unsigned `AF4B1588…`.
 
-### Instalação direta (sideload)
+### Atualizar da beta.1 (recomendado)
+
+1. **Não** desinstale o PixelCut e **não** limpe os dados.
+2. Permita fontes desconhecidas e abra `PixelCut-Android-0.1.0-beta.2.apk`.
+3. Confira o SHA-256 da beta.2 acima.
+4. Os projetos da beta.1 devem continuar no aparelho.
+
+### Instalação nova (sideload)
 
 1. Desinstale um PixelCut de depuração se a instalação for recusada (`INSTALL_FAILED_UPDATE_INCOMPATIBLE`). Isso apaga os projetos privados do app.
 2. Permita instalar de fontes desconhecidas no navegador ou no app Arquivos.
-3. Abra `PixelCut-Android-0.1.0-beta.1.apk` e confira o SHA-256 acima.
+3. Abra o APK da beta.2 e confira o SHA-256.
 4. Avisos de fonte desconhecida / Play Protect são esperados num sideload do GitHub.
 5. A exportação ainda grava **somente a faixa principal de vídeo**. Sobreposição, títulos, transições, chroma, efeitos do catálogo, efeitos de voz e uma faixa de música separada ficam de fora.
 
-O APK assinado foi instalado e testado num Galaxy A54 5G (Android 16) em 29 de outubro de 2026. Veja [ANDROID.md](ANDROID.md) e [ANDROID_DEVICE.md](ANDROID_DEVICE.md).
+A hotfix beta.2 foi instalada **por cima** da beta.1 num Galaxy A54 5G (Android 16) em 29 de outubro de 2026, sem apagar projetos. Veja [ANDROID.md](ANDROID.md) e [ANDROID_DEVICE.md](ANDROID_DEVICE.md).
 
 ## Fontes correspondentes (FFmpeg)
 

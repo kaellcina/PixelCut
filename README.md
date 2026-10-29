@@ -55,21 +55,20 @@ No **Android** a interface do editor é a mesma ideia (projetos, linha do tempo 
 
 ## Baixar o PixelCut
 
-A primeira beta é a `v0.1.0-beta.1`. **Os instaladores ainda não estão publicados** — a GitHub Release continua em rascunho.
-
-Quando a versão for publicada, os arquivos ficarão em:
+A primeira beta pública é a `v0.1.0-beta.1`. Há uma **hotfix Android** local `v0.1.0-beta.2` (ícone oficial + persistência dos vídeos ao fechar o app). Essa hotfix **ainda não foi publicada** no GitHub — a beta.1 permanece disponível e os anexos dela não devem ser alterados.
 
 **[github.com/kaellcina/PixelCut/releases/tag/v0.1.0-beta.1](https://github.com/kaellcina/PixelCut/releases/tag/v0.1.0-beta.1)**
 
 | Plataforma | Arquivo | SHA-256 |
 |---|---|---|
 | Windows 10/11 x64 | `PixelCut-Setup-0.1.0-beta.1.exe` | `9D3D4BC53C7851487EB345BD8AE6B88CC5062D098E586E88AE2AD33F3A86F49C` |
-| Android 7+ | `PixelCut-Android-0.1.0-beta.1.apk` | `1FE4A4B01B212AB2E7D4BCA7AE73D72568E66DE5396E92FDE5707723BC054F18` |
+| Android 7+ (beta.1) | `PixelCut-Android-0.1.0-beta.1.apk` | `1FE4A4B01B212AB2E7D4BCA7AE73D72568E66DE5396E92FDE5707723BC054F18` |
+| Android 7+ (hotfix local beta.2) | `PixelCut-Android-0.1.0-beta.2.apk` | `EA6CAA2EEEADA4C11B21B8CC253FAEEC20CAECF0AA91736E38ED527ACCB1D606` |
 
 Passo a passo: [docs/INSTALL.md](docs/INSTALL.md).
 
 - **Windows:** baixe o EXE, confira o SHA-256, execute o instalador NSIS. O arquivo **não** tem assinatura Authenticode — o SmartScreen pode avisar. Isso é esperado nesta beta.
-- **Android:** o APK é **assinado** (esquema v2) e distribuído **fora da Play Store**. Ative a instalação de fontes desconhecidas, confira o SHA-256 e instale. Se já existir um PixelCut de depuração, desinstale-o antes.
+- **Android:** o APK é **assinado** (esquema v2) e distribuído **fora da Play Store**. Ative a instalação de fontes desconhecidas, confira o SHA-256 e instale. Para atualizar da beta.1 para a hotfix beta.2, **não** desinstale e **não** limpe os dados. Só desinstale um PixelCut de depuração (chave diferente).
 
 Não use instaladores antigos (`PixelCut-Setup-0.1.0.exe`, `…-electron44.exe`, `…-ownffmpeg.exe`) nem `app-debug.apk`.
 
@@ -94,7 +93,7 @@ Não use instaladores antigos (`PixelCut-Setup-0.1.0.exe`, `…-electron44.exe`,
 2. Confira o SHA-256:
 
    ```powershell
-   Get-FileHash .\PixelCut-Android-0.1.0-beta.1.apk -Algorithm SHA256
+   Get-FileHash .\PixelCut-Android-0.1.0-beta.2.apk -Algorithm SHA256
    ```
 
 3. Desinstale um PixelCut de depuração se a instalação falhar por assinatura diferente

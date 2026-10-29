@@ -196,6 +196,7 @@ export function createCapacitorStore(Filesystem, Directory, Encoding, base = 'pr
     async writeAtomic(rel, text) {
       const dest = joinBase(base, rel);
       const tmp = `${dest}.tmp`;
+      const backup = dest.replace(/[^/]+$/, 'backup.json');
       await Filesystem.writeFile({
         path: tmp,
         data: String(text),
@@ -203,25 +204,20 @@ export function createCapacitorStore(Filesystem, Directory, Encoding, base = 'pr
         encoding: Encoding.UTF8,
         recursive: true,
       });
-      try {
-        const previous = await Filesystem.readFile({ path: dest, directory, encoding: Encoding.UTF8 });
-        const backup = dest.replace(/[^/]+$/, 'backup.json');
-        await Filesystem.writeFile({
-          path: backup,
-          data: previous.data,
-          directory,
-          encoding: Encoding.UTF8,
-          recursive: true,
-        });
-      } catch {
-        // First save has nothing to back up.
-      }
-      try {
-        await Filesystem.deleteFile({ path: dest, directory });
-      } catch {
-        // Destination may not exist yet.
+      if (await exists(rel)) {
+        try {
+          await Filesystem.deleteFile({ path: backup, directory });
+        } catch {
+          // No previous backup.
+        }
+        await Filesystem.rename({ from: dest, to: backup, directory });
       }
       await Filesystem.rename({ from: tmp, to: dest, directory });
+      try {
+        await Filesystem.deleteFile({ path: backup, directory });
+      } catch {
+        // Keep backup.json if the cleanup fails; load() still prefers project.json.
+      }
     },
   };
 }

@@ -14,6 +14,7 @@ import androidx.activity.result.ActivityResult;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
+import com.getcapacitor.FileUtils;
 import com.getcapacitor.JSArray;
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
@@ -25,6 +26,9 @@ import com.pixelcut.editor.media.MainTrackExporter;
 import com.pixelcut.editor.media.MediaFiles;
 
 import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.io.File;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -45,7 +49,26 @@ public class PixelCutPlugin extends Plugin {
     }
 
     @Override
+    protected void handleOnPause() {
+        JSObject event = new JSObject();
+        event.put("isActive", false);
+        notifyListeners("appState", event);
+        super.handleOnPause();
+    }
+
+    @Override
+    protected void handleOnResume() {
+        JSObject event = new JSObject();
+        event.put("isActive", true);
+        notifyListeners("appState", event);
+        super.handleOnResume();
+    }
+
+    @Override
     protected void handleOnDestroy() {
+        JSObject event = new JSObject();
+        event.put("isActive", false);
+        notifyListeners("appState", event);
         cancelActive();
         if (io != null) io.shutdownNow();
         super.handleOnDestroy();
@@ -72,6 +95,7 @@ public class PixelCutPlugin extends Plugin {
             return;
         }
         List<Uri> uris = urisFrom(result.getData());
+        for (Uri uri : uris) takePersistableRead(uri);
         call.setKeepAlive(Boolean.TRUE);
         io.execute(() -> {
             JSArray items = new JSArray();
@@ -111,20 +135,44 @@ public class PixelCutPlugin extends Plugin {
 
     @PluginMethod
     public void restoreMedia(PluginCall call) {
-        JSArray sources = call.getArray("sources");
+        JSArray incoming = call.getArray("items");
+        JSArray sources = incoming == null ? call.getArray("sources") : null;
+        int count = incoming != null ? incoming.length() : (sources != null ? sources.length() : 0);
         JSArray items = new JSArray();
-        if (sources != null) {
-            for (int i = 0; i < sources.length(); i++) {
-                JSObject item = new JSObject();
-                String source = "";
+        for (int i = 0; i < count; i++) {
+            JSObject item = new JSObject();
+            String id = "";
+            String raw = "";
+            if (incoming != null) {
                 try {
-                    source = sources.getString(i);
-                } catch (JSONException ignored) {
-                    source = "";
+                    JSONObject row = incoming.getJSONObject(i);
+                    id = row.optString("id", "");
+                    raw = firstNonEmpty(row.optString("source", ""), row.optString("path", ""));
+                } catch (JSONException error) {
+                    try {
+                        raw = incoming.getString(i);
+                    } catch (JSONException ignored) {
+                        raw = "";
+                    }
                 }
-                item.put("ok", source != null && !source.isEmpty() && MediaFiles.exists(getContext(), source));
-                items.put(item);
+            } else {
+                try {
+                    raw = sources.getString(i);
+                } catch (JSONException ignored) {
+                    raw = "";
+                }
             }
+            File file = MediaFiles.findOwned(getContext(), raw);
+            item.put("id", id);
+            item.put("ok", file != null);
+            if (file != null) {
+                item.put("source", file.getAbsolutePath());
+                item.put("path", webPath(file));
+            } else {
+                item.put("source", MediaFiles.unwrapSource(raw));
+                item.put("path", "");
+            }
+            items.put(item);
         }
         JSObject result = new JSObject();
         result.put("items", items);
@@ -245,6 +293,32 @@ public class PixelCutPlugin extends Plugin {
     private void cancelActive() {
         MainTrackExporter active = exporter;
         if (active != null) active.cancel();
+    }
+
+    private void takePersistableRead(Uri uri) {
+        if (uri == null) return;
+        try {
+            getContext().getContentResolver().takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        } catch (SecurityException ignored) {
+            // Photos, Drive and some OEMs refuse persistable grants. The private copy is the real backup.
+        }
+    }
+
+    private String webPath(File file) {
+        if (file == null || getBridge() == null) return file == null ? "" : file.getAbsolutePath();
+        try {
+            return FileUtils.getPortablePath(getContext(), getBridge().getLocalUrl(), Uri.fromFile(file));
+        } catch (Exception error) {
+            return file.getAbsolutePath();
+        }
+    }
+
+    private static String firstNonEmpty(String... values) {
+        if (values == null) return "";
+        for (String value : values) {
+            if (value != null && !value.trim().isEmpty()) return value;
+        }
+        return "";
     }
 
     private static List<Uri> urisFrom(Intent data) {

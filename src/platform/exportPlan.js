@@ -4,6 +4,7 @@
 // was exported when the native encoder leaves it out.
 
 import { clipLength, clipSpeed, exportDuration, isLinked, videoLayout } from '../store.js';
+import { mediaOwnedPath } from './mediaPath.js';
 
 export const EXPORT_LIMITS = {
   transition: 'As transições não entram no arquivo. Os clipes da faixa principal são unidos em corte seco, cada um com a duração integral.',
@@ -40,7 +41,8 @@ export function planMainExport(project) {
   const items = videoLayout(clips).map(({ clip }) => {
     const media = mediaById.get(clip.mediaId);
     if (!media) throw new Error('Um clipe da faixa principal perdeu a mídia.');
-    if (!media.source) {
+    const source = mediaOwnedPath(media) || media.source || '';
+    if (!source) {
       throw new Error(`“${mediaName(media)}” não está salvo no aparelho. Importe o arquivo de novo.`);
     }
     if (media.type !== 'video' && media.type !== 'image') {
@@ -69,7 +71,7 @@ export function planMainExport(project) {
 
     if (media.type === 'image') {
       return {
-        source: media.source,
+        source,
         name: mediaName(media),
         type: 'image',
         inMs: 0,
@@ -80,7 +82,7 @@ export function planMainExport(project) {
       };
     }
     return {
-      source: media.source,
+      source,
       name: mediaName(media),
       type: 'video',
       inMs: Math.round(inSec * 1000),

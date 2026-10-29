@@ -1,3 +1,4 @@
+import { mediaOwnedPath } from '../platform/mediaPath.js';
 import { emptyProject, projectDuration, uid } from '../store.js';
 
 export const PROJECT_SCHEMA = 1;
@@ -123,7 +124,7 @@ export function inspectMedia(project, exists) {
   const media = (project.media || []).map((item) => {
     const name = item?.name || 'Mídia';
     const blob = typeof item?.path === 'string' && item.path.startsWith('blob:');
-    const persistent = item?.source || (!blob && item?.path) || '';
+    const persistent = mediaOwnedPath(item) || item?.source || (!blob && item?.path) || '';
     if (!persistent) {
       missing.push({
         id: item.id,
@@ -141,7 +142,11 @@ export function inspectMedia(project, exists) {
       ok = false;
     }
     if (!ok) {
-      missing.push({ id: item.id, name, reason: `${name} — o arquivo não está mais disponível.` });
+      missing.push({
+        id: item.id,
+        name,
+        reason: `${name} — o arquivo não está mais disponível. Localize-o de novo; o clipe permanece no projeto.`,
+      });
       return { ...item, missing: true };
     }
     return { ...item, missing: false };

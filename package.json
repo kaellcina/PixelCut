@@ -9,7 +9,8 @@
   "scripts": {
     "build": "vite build",
     "start": "npm run build && electron .",
-    "test:export": "node scripts/test-editor.cjs && node scripts/test-projects.cjs && node scripts/test-project-path.cjs && node scripts/test-ffprobe.cjs && node scripts/test-export.cjs && node scripts/test-export-duration.cjs",
+    "test:export": "node scripts/test-editor.cjs && node scripts/test-projects.cjs && node scripts/test-project-path.cjs && node scripts/test-android-persist.cjs && node scripts/test-ffprobe.cjs && node scripts/test-export.cjs && node scripts/test-export-duration.cjs",
+    "test:android-persist": "node scripts/test-android-persist.cjs",
     "test:project-path": "node scripts/test-project-path.cjs",
     "test:electron": "node scripts/test-electron-boot.cjs",
     "test:gui": "node scripts/test-gui-flow.cjs",

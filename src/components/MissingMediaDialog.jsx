@@ -6,7 +6,7 @@ export default function MissingMediaDialog({ missing, onRelocate, onContinue }) 
     <div className="modal-backdrop">
       <div className="modal">
         <h3>Mídia ausente</h3>
-        <p className="dim">O restante do projeto foi preservado. Localize os arquivos que faltam ou continue com a timeline como está.</p>
+        <p className="dim">Os clipes continuam no projeto. Localize o arquivo de novo — nada foi apagado. Se o vídeo original saiu da pasta ou a permissão do Android expirou, escolha o mesmo arquivo outra vez.</p>
         <ul className="missing-list">
           {missing.map((item) => (
             <li key={item.id || item.reason}>

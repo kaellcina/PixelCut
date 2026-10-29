@@ -3,6 +3,7 @@
 
 import { Capacitor } from '@capacitor/core';
 import { planMainExport } from './exportPlan.js';
+import { mediaOwnedPath, playableUrl } from './mediaPath.js';
 import { openProject } from './webHost.js';
 import {
   androidPersistenceNote,
@@ -56,7 +57,7 @@ export async function importMedia() {
       return {
         name: item.name,
         source: item.source,
-        path: Capacitor.convertFileSrc(item.source),
+        path: playableUrl(item.source, (file) => Capacitor.convertFileSrc(file)) || Capacitor.convertFileSrc(item.source),
         type: item.type,
         duration: item.duration,
         width: item.width || 0,
@@ -71,9 +72,26 @@ export async function importMedia() {
 }
 
 export function releaseMedia(item) {
-  const source = item && typeof item === 'object' ? item.source : '';
+  const source = mediaOwnedPath(item) || (item && typeof item === 'object' ? item.source : '');
   if (!source) return;
   native().deleteMedia({ source }).catch(() => {});
+}
+
+export function onAppClosing(callback) {
+  let removed = false;
+  let handle = null;
+  native().addListener('appState', (event) => {
+    if (!removed && event && event.isActive === false) {
+      Promise.resolve(callback()).catch(() => {});
+    }
+  }).then((result) => {
+    handle = result;
+    if (removed && result) result.remove();
+  }).catch(() => {});
+  return () => {
+    removed = true;
+    if (handle) handle.remove();
+  };
 }
 
 export async function restoreProject(project) {
@@ -84,7 +102,8 @@ export async function relocateMedia(item) {
   const items = await importMedia();
   const picked = (items || []).find((entry) => entry && !entry.error);
   if (!picked) return null;
-  if (item?.source && item.source !== picked.source) native().deleteMedia({ source: item.source }).catch(() => {});
+  const previous = mediaOwnedPath(item) || item?.source;
+  if (previous && previous !== picked.source) native().deleteMedia({ source: previous }).catch(() => {});
   return { ...item, ...picked, id: item.id, missing: false };
 }
 
