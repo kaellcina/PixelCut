@@ -1,22 +1,22 @@
-# Contributing to PixelCut
+# Contribuir com o PixelCut
 
-Thank you for helping with this public beta.
+Obrigado por ajudar nesta beta pública.
 
-## Ground rules
+## Regras básicas
 
-- Keep Windows Electron + FFmpeg and Android Capacitor + Media3 as two engines. Do not replace one with the other.
-- Do not add a debug APK, keystore, `.env`, or user media to the repository.
-- Do not treat `spawn` of FFmpeg as permission to copy GPL code into the editor, or to drop the corresponding-source package.
-- Do not rebuild FFmpeg unless the change is about that binary. The shipped pair is PixelCut n6.1.1 (`050577AF…` / `0BB9D300…`).
+- Mantenha Windows (Electron + FFmpeg) e Android (Capacitor + Media3) como dois motores. Não substitua um pelo outro.
+- Não coloque no repositório APK de depuração, keystore, `.env` ou mídia de utilizador.
+- Não trate o `spawn` do FFmpeg como autorização para copiar código GPL para o editor, nem para abandonar o pacote de fontes correspondentes.
+- Não reconstrua o FFmpeg a menos que a mudança seja sobre esse binário. O par enviado é o PixelCut n6.1.1 (`050577AF…` / `0BB9D300…`).
 
-## Development (Windows)
+## Desenvolvimento (Windows)
 
 ```powershell
 npm ci
 npm start
 ```
 
-Useful checks:
+Verificações úteis:
 
 ```powershell
 npm run test:export
@@ -24,14 +24,14 @@ npm run test:electron
 npm run test:gui
 ```
 
-`PIXELCUT_USER_DATA` points Electron at a throwaway profile. Do not delete `%AppData%\PixelCut\projects` on a developer machine.
+`PIXELCUT_USER_DATA` aponta o Electron para um perfil temporário. Não apague `%AppData%\PixelCut\projects` numa máquina de desenvolvimento.
 
 ## Pull requests
 
-1. Open an issue first for license, FFmpeg, or Android export changes.
-2. Keep diffs focused.
-3. Describe how you tested (command + result).
+1. Abra um issue antes se a mudança envolver licença, FFmpeg ou o alcance da exportação Android.
+2. Mantenha o diff focado.
+3. Descreva como testou (comando + resultado).
 
-## License of contributions
+## Licença das contribuições
 
-Original editor contributions are offered under the MIT License in [LICENSE](LICENSE), Copyright (c) 2026 Kaell Soares Calacina. FFmpeg/FFprobe stay GPL-2.0-or-later and are not original PixelCut MIT code.
+Contribuições originais ao editor são oferecidas sob a licença MIT em [LICENSE](LICENSE), Copyright (c) 2026 Kaell Soares Calacina. FFmpeg/FFprobe continuam GPL-2.0-or-later e não são código MIT original do PixelCut.

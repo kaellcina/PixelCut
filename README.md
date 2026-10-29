@@ -1,116 +1,147 @@
-# PixelCut
-
-PixelCut is a dark, multi-track video editor for **Windows 10/11 (x64)**, with an **Android** companion that is not at feature parity yet. It is a **free public beta**: expect sharp edges, and please file issues when something breaks.
-
-This is not CapCut and is not affiliated with ByteDance.
-
-<p>
-  <img src="docs/screenshots/icon.png" alt="PixelCut icon" width="96" height="96" />
+<p align="center">
+  <img src="docs/screenshots/icon.png" alt="Ícone do PixelCut" width="112" height="112">
 </p>
 
-**Downloads:** GitHub Releases for the planned public repository named **PixelCut**. The GitHub account/owner is not recorded in this tree, so no download URL is invented here. The first planned tag is `v0.1.0-beta.1`. Nothing has been uploaded yet.
+<h1 align="center">PixelCut</h1>
 
-## Screenshots
+<p align="center"><strong>Editor de vídeo gratuito e de código aberto</strong></p>
 
-Home screen (recent projects on this computer):
+<p align="center">
+  Corte, organize e exporte vídeos no computador ou no celular, sem assinatura e sem loja obrigatória.
+</p>
 
-![PixelCut home — Recents](docs/screenshots/home.png)
+<p align="center">
+  <img alt="Windows" src="https://img.shields.io/badge/Windows-10%2F11%20x64-0A84FF?style=flat-square">
+  <img alt="Android" src="https://img.shields.io/badge/Android-7%2B-3DDC84?style=flat-square">
+  <img alt="Beta" src="https://img.shields.io/badge/versão-v0.1.0--beta.1-1D4ED8?style=flat-square">
+  <img alt="Licença MIT" src="https://img.shields.io/badge/licença-MIT-22C55E?style=flat-square">
+</p>
 
-Editor: media library, preview, inspector, and timeline (overlay, text, video, and audio tracks):
+O PixelCut é uma beta pública gratuita para **Windows 10/11 (64 bits)** e **Android 7 ou superior**. Os projetos ficam no seu aparelho. Ele **não** é o CapCut e **não** tem ligação com a ByteDance.
 
-![PixelCut editor and timeline](docs/screenshots/editor-timeline.png)
+Windows e Android **não** têm os mesmos recursos. No Android, a exportação ainda grava **somente a faixa principal**.
 
-These are crops of the real PixelCut 0.1.0 window (28 October 2026), not mockups.
+## Capturas de tela
 
-## Windows features
+Imagens reais do PixelCut 0.1.0 no Windows, não mockups.
 
-- **Recents**: create, open, rename, duplicate, and delete projects (delete asks for confirmation).
-- **Autosave** into `%AppData%\PixelCut\projects` (about 700 ms after edits). Closing without Save still keeps the work.
-- Import video, image, and audio; place clips on the timeline; trim, split, speed, and volume.
-- Multi-track timeline: main video, overlay, text, audio, plus effects and transitions.
-- **Preview and Windows export include visual effects, transitions, chroma key, overlays, titles, voice effects, and the music track.** Export is H.264 + AAC MP4 via FFmpeg. Duration follows the full timeline (`projectDuration`): after the main video ends, the background stays black, matching the preview.
-- Undo / redo, keyboard shortcuts for play, split, and frame step.
-- Projects are JSON plus local media paths. If a file moves, PixelCut asks you to relocate it. Deleting a project does not delete your original media.
+<p align="center">
+  <img src="docs/screenshots/home.png" alt="Tela inicial do PixelCut, com projetos recentes" width="820">
+</p>
 
-## Android features
+<p align="center"><em>Tela inicial — projetos recentes neste computador</em></p>
 
-- Same editor UI (Capacitor) for browsing projects, editing the timeline, and previewing on the device player.
-- Export uses AndroidX **Media3 Transformer**.
+<p align="center">
+  <img src="docs/screenshots/editor-timeline.png" alt="Editor e linha do tempo do PixelCut" width="820">
+</p>
 
-### Android export limitation
+<p align="center"><em>Editor — biblioteca, preview, propriedades e linha do tempo</em></p>
 
-Android currently exports **only the main video track**: cut, sequence, stills, speed, and the original audio of that video.
+## O que o PixelCut faz
 
-**Not written into the Android MP4:** transitions, overlays, titles, chroma key, catalog visual effects, the voice-effect chain, or the separate music track. The on-device preview can show more than the file you get. This is not equivalent to the Windows exporter.
+No **Windows** você pode:
 
-## Known limitations
+- Editar em linha do tempo, com várias faixas (vídeo, sobreposição, texto e áudio)
+- Importar vídeo, imagem e áudio
+- Cortar, dividir, reorganizar clipes, ajustar velocidade e volume
+- Inserir textos, transições, efeitos visuais e chroma key
+- Tratar áudio (incluindo efeitos de voz e faixa de música)
+- Salvar projetos com autosave
+- Exportar MP4 em H.264 + AAC, com o que está na linha do tempo — efeitos, transições, chroma, títulos, sobreposições, voz e música
 
-- Version **0.1.0-beta.1** — a working editor, not a full NLE.
-- Windows installer is **not Authenticode-signed**. SmartScreen may warn.
-- Preview (Chromium or the Android system player) and export (FFmpeg or Media3) can differ.
-- Windows projects store **absolute local paths**. Keep copies of the media.
-- Text preview fonts load from Google Fonts; Windows export uses fonts already installed on the PC.
-- Android release APK is **signed** (v2) and was sideloaded on a Galaxy A54 5G (Android 16) on 29 October 2026: import, play, split, save/reopen, and Media3 main-track export succeeded. Export is still **main-track only**. Overlay, titles, transitions, chroma, catalog effects, voice effects, and a separate music track are **not** written into the Android MP4. Do not expect Windows parity.
-- Android export warnings for omitted tracks currently appear **after** the file is written (`ExportDialog`), not as a blocking confirm **before** export. That pre-export confirm is an open UI item; do not rebuild the signed APK for it in this beta.
-- No background removal, masks, auto captions, speech synthesis, or AI assistant.
+No **Android** a interface do editor é a mesma ideia (projetos, linha do tempo e preview). A exportação, porém, usa o Media3 e **grava só a faixa principal** (corte, sequência, imagens paradas, velocidade e o áudio original desse vídeo).
 
-## Install the Windows EXE
+**Não entram no MP4 do Android:** sobreposições, textos, transições, chroma key, efeitos visuais do catálogo, cadeia de efeitos de voz nem a faixa de música separada. O preview no celular pode mostrar mais do que o arquivo final. Isso **não** é paridade com o Windows.
 
-See [docs/INSTALL.md](docs/INSTALL.md).
+## Baixar o PixelCut
 
-Short version: on 64-bit Windows 10 or 11, download `PixelCut-Setup-0.1.0-beta.1.exe` from Releases, verify the SHA-256 in the release notes, run the NSIS installer, and keep `%AppData%\PixelCut\projects` if you uninstall.
+A primeira beta é a `v0.1.0-beta.1`. **Os instaladores ainda não estão publicados** — a GitHub Release continua em rascunho.
 
-**Minimum requirements (Windows):** 64-bit Windows 10 or 11; disk space for the app plus your media. Network is needed only for Google Fonts in the text preview.
+Quando a versão for publicada, os arquivos ficarão em:
 
-## Install the Android APK
+**[github.com/kaellcina/PixelCut/releases/tag/v0.1.0-beta.1](https://github.com/kaellcina/PixelCut/releases/tag/v0.1.0-beta.1)**
 
-See [docs/INSTALL.md](docs/INSTALL.md) and [docs/ANDROID.md](docs/ANDROID.md).
+| Plataforma | Arquivo | SHA-256 |
+|---|---|---|
+| Windows 10/11 x64 | `PixelCut-Setup-0.1.0-beta.1.exe` | `9D3D4BC53C7851487EB345BD8AE6B88CC5062D098E586E88AE2AD33F3A86F49C` |
+| Android 7+ | `PixelCut-Android-0.1.0-beta.1.apk` | `1FE4A4B01B212AB2E7D4BCA7AE73D72568E66DE5396E92FDE5707723BC054F18` |
 
-**Minimum:** Android 7.0 (API 24).
+Passo a passo: [docs/INSTALL.md](docs/INSTALL.md).
 
-GitHub asset name: `PixelCut-Android-0.1.0-beta.1.apk`  
-SHA-256 `1FE4A4B01B212AB2E7D4BCA7AE73D72568E66DE5396E92FDE5707723BC054F18` (6 267 993 bytes). Signed, tested on Galaxy A54, **not uploaded**. Debug APKs must not be shipped.
+- **Windows:** baixe o EXE, confira o SHA-256, execute o instalador NSIS. O ficheiro **não** tem assinatura Authenticode — o SmartScreen pode avisar. Isso é esperado nesta beta.
+- **Android:** o APK é **assinado** (esquema v2) e distribuído **fora da Play Store**. Ative a instalação de fontes desconhecidas, confira o SHA-256 e instale. Se já existir um PixelCut de depuração, desinstale-o antes.
 
-Sideload: enable install from unknown sources, verify the SHA-256, then open the APK. If a **debug** PixelCut is already installed, uninstall it first (`INSTALL_FAILED_UPDATE_INCOMPATIBLE`); that deletes app-private projects. Signing backup: [docs/ANDROID_SIGNING.md](docs/ANDROID_SIGNING.md). Device notes: [docs/ANDROID_DEVICE.md](docs/ANDROID_DEVICE.md).
+Não use instaladores antigos (`PixelCut-Setup-0.1.0.exe`, `…-electron44.exe`, `…-ownffmpeg.exe`) nem `app-debug.apk`.
 
-Android export currently writes **only the main video track**.
+## Como instalar
 
-## Report bugs
+### Windows
 
-Use **GitHub Issues on this repository** once it exists. Templates live in [`.github/ISSUE_TEMPLATE/`](.github/ISSUE_TEMPLATE/). The GitHub owner is not stored in this tree, so no `github.com/...` URL is invented here.
+1. Windows 10 ou 11 de 64 bits
+2. Confira o SHA-256:
 
-Please include:
+   ```powershell
+   Get-FileHash .\PixelCut-Setup-0.1.0-beta.1.exe -Algorithm SHA256
+   ```
 
-- Windows or Android
-- App version or the installer SHA-256
-- Steps, expected result, actual result
+3. Feche o PixelCut se estiver aberto
+4. Execute o instalador (pasta à escolha, atalhos no menu Iniciar e na área de trabalho)
+5. Os projetos ficam em `%AppData%\PixelCut\projects` — não apague essa pasta se quiser manter o trabalho
 
-Do **not** attach personal media, `%AppData%\PixelCut\projects`, keystores, or `.env` files.
+### Android (instalação direta)
 
-## Contribute
+1. Android 7.0 (API 24) ou posterior
+2. Confira o SHA-256:
 
-See [CONTRIBUTING.md](CONTRIBUTING.md). Pull requests that change FFmpeg linkage, Android export scope, or licenses need an explicit discussion first.
+   ```powershell
+   Get-FileHash .\PixelCut-Android-0.1.0-beta.1.apk -Algorithm SHA256
+   ```
 
-## License
+3. Desinstale um PixelCut de depuração se a instalação falhar por assinatura diferente
+4. Permita fontes desconhecidas e abra o APK
+5. Lembrete: a exportação no Android inclui **só a faixa principal**
 
-- **Original PixelCut editor code** (application source, original docs, original assets) is under the **MIT License**, Copyright (c) 2026 Kaell Soares Calacina. See [LICENSE](LICENSE). That copyright does **not** cover FFmpeg or other third-party works.
-- **FFmpeg and FFprobe** (Windows) are separate executables under **GPL-2.0-or-later**. PixelCut starts them with `spawn` and command-line arguments; it does not link `libav*`. Notices: [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md), `third-party/ffmpeg/COPYING.GPLv2`.
-- Corresponding source for the shipped FFmpeg/FFprobe pair: [`ffmpeg-corresponding-source/`](ffmpeg-corresponding-source/README.md) (`pixelcut-n6.1.1/` in this repository). Attach `PixelCut-ffmpeg-n6.1.1-corresponding-source.zip` to the same GitHub Release as the Windows installer.
-- Architecture note (not legal advice): [`docs/LICENSING.md`](docs/LICENSING.md).
+Detalhes: [docs/INSTALL.md](docs/INSTALL.md) e [docs/ANDROID.md](docs/ANDROID.md).
 
-FFmpeg is a trademark of Fabrice Bellard.
-
-## Run from source (Windows)
+## Rodar a partir do código (Windows)
 
 ```powershell
 npm ci
 npm start
 ```
 
-```powershell
-npm run build
-npm run test:export
-npm run dist:win
-```
+Node.js 22+ e Windows 64 bits. O fluxo de CI **não** gera nem publica instaladores sozinho (`workflow_dispatch`).
 
-Node.js 22+ and 64-bit Windows are required to build the installer. The CI workflow does **not** build or publish binaries unless someone runs it by hand (`workflow_dispatch`).
+## Como reportar bugs
+
+Abra um issue em [github.com/kaellcina/PixelCut/issues](https://github.com/kaellcina/PixelCut/issues). Há modelos em [`.github/ISSUE_TEMPLATE/`](.github/ISSUE_TEMPLATE/).
+
+Inclua:
+
+- Windows ou Android
+- Versão ou o SHA-256 do instalador/APK
+- Passos, resultado esperado e o que aconteceu
+
+**Não** envie mídia pessoal, pasta de projetos, keystore ou ficheiros `.env`.
+
+## Como contribuir
+
+Veja [CONTRIBUTING.md](CONTRIBUTING.md). Mudanças em FFmpeg, no alcance da exportação Android ou nas licenças pedem conversa antes do pull request.
+
+## Licença e créditos
+
+- **Código original do PixelCut** (aplicação, documentos originais e recursos originais): licença **MIT**, Copyright (c) 2026 Kaell Soares Calacina. Texto oficial: [LICENSE](LICENSE). Esse copyright **não** cobre o FFmpeg nem outros trabalhos de terceiros.
+- **FFmpeg e FFprobe** no Windows são executáveis **separados**, **GPL-2.0-or-later**. O PixelCut os inicia com `spawn` e argumentos de linha de comando; não liga `libav*`. Avisos: [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) e `third-party/ffmpeg/COPYING.GPLv2`.
+- Fontes correspondentes do par enviado: [`ffmpeg-corresponding-source/`](ffmpeg-corresponding-source/README.md). O ZIP `PixelCut-ffmpeg-n6.1.1-corresponding-source.zip` deve ir na mesma Release que o instalador Windows.
+- Os demais componentes conservam as próprias licenças. Nota de arquitetura (não é parecer jurídico): [docs/LICENSING.md](docs/LICENSING.md).
+
+FFmpeg é marca de Fabrice Bellard.
+
+## Limitações desta beta
+
+- É um editor que funciona, não uma suíte profissional completa
+- Instalador Windows sem Authenticode (alerta do SmartScreen)
+- Preview e exportação podem divergir
+- No Windows, os projetos guardam caminhos locais absolutos
+- No Android, a exportação é só a faixa principal
+- Sem remoção de fundo, máscaras, legendas automáticas, síntese de fala ou assistente de IA

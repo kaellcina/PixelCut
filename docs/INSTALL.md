@@ -1,96 +1,96 @@
-# Install PixelCut
+# Instalar o PixelCut
 
-Public downloads, when published, will be on GitHub Releases for the
-repository named **PixelCut**. The GitHub owner/account is not stored in
-this tree, so no `github.com/...` URL is invented here.
+Quando a versão `v0.1.0-beta.1` for **publicada**, os downloads ficam em:
 
-Nothing in this document uploads files.
+[https://github.com/kaellcina/PixelCut/releases/tag/v0.1.0-beta.1](https://github.com/kaellcina/PixelCut/releases/tag/v0.1.0-beta.1)
 
-## Windows installer (EXE)
+Neste momento a Release ainda está em rascunho: os links acima **ainda não** servem como download público.
 
-**Local artifact prepared for `v0.1.0-beta.1` (not uploaded):**
+Nada neste documento envia ficheiros para o GitHub.
 
-| Field | Value |
+## Instalador Windows (EXE)
+
+| Campo | Valor |
 |---|---|
-| File | `PixelCut-Setup-0.1.0-beta.1.exe` |
+| Ficheiro | `PixelCut-Setup-0.1.0-beta.1.exe` |
 | SHA-256 | `9D3D4BC53C7851487EB345BD8AE6B88CC5062D098E586E88AE2AD33F3A86F49C` |
-| Size | 144 836 084 bytes |
+| Tamanho | 144 836 084 bytes |
 | App | Electron 44.10.0, x64 |
 | FFmpeg | PixelCut n6.1.1 (`050577AF…` / `0BB9D300…`) |
-| Signature | NotSigned |
+| Assinatura | NotSigned |
 
-Older local installers must **not** be the public beta download:
+Não use instaladores locais antigos como download da beta pública:
 
 - `PixelCut-Setup-0.1.0.exe`
 - `PixelCut-Setup-0.1.0-electron44.exe`
 - `PixelCut-Setup-0.1.0-ownffmpeg.exe`
 
-### Steps
+### Passos
 
-1. On Windows 10 or 11 (64-bit), download `PixelCut-Setup-0.1.0-beta.1.exe`.
-2. Confirm the SHA-256:
+1. No Windows 10 ou 11 (64 bits), baixe `PixelCut-Setup-0.1.0-beta.1.exe`.
+2. Confira o SHA-256:
 
    ```powershell
    Get-FileHash .\PixelCut-Setup-0.1.0-beta.1.exe -Algorithm SHA256
    ```
 
-3. Quit PixelCut if it is already running.
-4. Run the installer. NSIS lets you choose the folder. It creates Start Menu and desktop shortcuts.
-5. Windows SmartScreen may warn because the file is **not** Authenticode-signed. That is expected for this beta. There is no publisher signature to “trust” beyond verifying the SHA-256 above.
-6. Do **not** delete `%AppData%\PixelCut\projects`. Uninstalling the app should leave your projects unless you remove that folder yourself.
+3. Feche o PixelCut se já estiver aberto.
+4. Execute o instalador. O NSIS deixa escolher a pasta e cria atalhos no menu Iniciar e na área de trabalho.
+5. O SmartScreen do Windows pode avisar porque o ficheiro **não** tem assinatura Authenticode. Isso é esperado nesta beta. Confie no SHA-256 acima, não num “editor” da Microsoft.
+6. **Não** apague `%AppData%\PixelCut\projects`. Desinstalar o app deve deixar os projetos, salvo se você remover essa pasta.
 
-The installer shows MIT (original PixelCut code) and GPL-2.0-or-later (FFmpeg/FFprobe). License files after install:
+O instalador mostra MIT (código original do PixelCut) e GPL-2.0-or-later (FFmpeg/FFprobe). Depois da instalação:
 
 - `resources/LICENSE`
 - `resources/THIRD_PARTY_NOTICES.md`
 - `resources/app.asar.unpacked/third-party/ffmpeg/COPYING.GPLv2`
 - `resources/app.asar.unpacked/third-party/ffmpeg/LICENSE-NOTICES.md`
 
-### Minimum requirements (Windows)
+### Requisitos mínimos (Windows)
 
-- Windows 10 or Windows 11, 64-bit
-- Disk space for the app (installer is about 138 MiB on disk; the EXE is 144 836 084 bytes) plus your media
-- Internet only for Google Fonts in the **text preview**; export does not need the network
+- Windows 10 ou Windows 11, 64 bits
+- Espaço em disco para o app (o EXE tem 144 836 084 bytes) e para as suas mídias
+- Internet só para Google Fonts no **preview de texto**; a exportação não precisa de rede
 
-## Android APK
+## APK Android
 
-Product notes: [ANDROID.md](ANDROID.md). Signing: [ANDROID_SIGNING.md](ANDROID_SIGNING.md).
+Notas do produto: [ANDROID.md](ANDROID.md). Assinatura: [ANDROID_SIGNING.md](ANDROID_SIGNING.md).
 
-**Minimum:** Android 7.0 (API 24), 64- or 32-bit ABI as packaged. `applicationId` `com.pixelcut.editor`.
+**Mínimo:** Android 7.0 (API 24). `applicationId` `com.pixelcut.editor`.
 
-### Signed local build (not uploaded)
+### Build assinado
 
-| Field | Value |
+| Campo | Valor |
 |---|---|
-| Staging | `%LOCALAPPDATA%\PixelCut\staging\PixelCut-Android-0.1.0-beta.1.apk` |
+| Nome | `PixelCut-Android-0.1.0-beta.1.apk` |
 | Bytes | 6 267 993 |
 | SHA-256 | `1FE4A4B01B212AB2E7D4BCA7AE73D72568E66DE5396E92FDE5707723BC054F18` |
-| Signature | v2, `apksigner verify` OK. Package `com.pixelcut.editor`, version `0.1.0-beta.1`, minSdk 24. |
+| Assinatura | v2, `apksigner verify` OK. Pacote `com.pixelcut.editor`, versão `0.1.0-beta.1`, minSdk 24. |
 
-Do **not** distribute `app-debug.apk`. Do not use the old unsigned hash `AF4B1588…`.
+**Não** distribua `app-debug.apk`. Não use o hash antigo unsigned `AF4B1588…`.
 
-### Sideload
+### Instalação direta (sideload)
 
-1. Uninstall any debug PixelCut first if install is rejected (`INSTALL_FAILED_UPDATE_INCOMPATIBLE`). That wipes app-private projects.
-2. Enable install from unknown sources for the browser or Files app you use to open the APK.
-3. Open `PixelCut-Android-0.1.0-beta.1.apk` and check the SHA-256 above.
-4. Unknown-source / Play Protect warnings are expected for a GitHub sideload.
-5. Export still writes **only the main video track**. Overlay, titles, transitions, chroma, catalog effects, voice effects, and a separate music track are omitted.
+1. Desinstale um PixelCut de depuração se a instalação for recusada (`INSTALL_FAILED_UPDATE_INCOMPATIBLE`). Isso apaga os projetos privados do app.
+2. Permita instalar de fontes desconhecidas no navegador ou no app Ficheiros.
+3. Abra `PixelCut-Android-0.1.0-beta.1.apk` e confira o SHA-256 acima.
+4. Avisos de fonte desconhecida / Play Protect são esperados num sideload do GitHub.
+5. A exportação ainda grava **somente a faixa principal de vídeo**. Sobreposição, títulos, transições, chroma, efeitos do catálogo, efeitos de voz e uma faixa de música separada ficam de fora.
 
-The signed APK was installed and tested on a Galaxy A54 5G (Android 16) on 29 October 2026. See [ANDROID.md](ANDROID.md) and [ANDROID_DEVICE.md](ANDROID_DEVICE.md).
+O APK assinado foi instalado e testado num Galaxy A54 5G (Android 16) em 29 de outubro de 2026. Veja [ANDROID.md](ANDROID.md) e [ANDROID_DEVICE.md](ANDROID_DEVICE.md).
 
-## Corresponding source (FFmpeg)
+## Fontes correspondentes (FFmpeg)
 
-The Windows installer includes GPL FFmpeg/FFprobe executables. Source to rebuild those exact binaries:
+O instalador Windows inclui os executáveis GPL do FFmpeg/FFprobe. Fontes para reconstruir exatamente esses binários:
 
 [`../ffmpeg-corresponding-source/pixelcut-n6.1.1/`](../ffmpeg-corresponding-source/pixelcut-n6.1.1/)
 
-Release zip (attach next to the EXE):
+ZIP da Release (junto do EXE):
 `PixelCut-ffmpeg-n6.1.1-corresponding-source.zip`  
 SHA-256 `27187E48A173F4096BDE53B2B9265C2C2703BA31F9DDD53F12B6BF27D1FB52F8` (42 315 883 bytes)
 
-Offer summary: [`../ffmpeg-corresponding-source/README.md`](../ffmpeg-corresponding-source/README.md)
+Resumo da oferta: [`../ffmpeg-corresponding-source/README.md`](../ffmpeg-corresponding-source/README.md)
 
 ## Bugs
 
-GitHub Issues on this repository (templates in `.github/ISSUE_TEMPLATE/`). Include the SHA-256 of the file you installed. Do not attach personal media, keystores, or `.env` files.
+[Issues do repositório](https://github.com/kaellcina/PixelCut/issues) (modelos em `.github/ISSUE_TEMPLATE/`). Inclua o SHA-256 do ficheiro que instalou. Não anexe mídia pessoal, keystores ou `.env`.

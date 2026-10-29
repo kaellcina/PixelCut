@@ -1,13 +1,13 @@
-# Security
+# Segurança
 
-## Current beta (0.1.0-beta.1)
+## Beta atual (0.1.0-beta.1)
 
-- The Windows installer is **not** Authenticode-signed (`NotSigned`). SmartScreen may warn. That is the approved Windows distribution for this free beta.
-- The Android release APK is signed v2 (SHA-256 `1FE4A4B0…`). The keystore stays **off** Git (`%LOCALAPPDATA%\PixelCut\signing\`). Do not commit `keystore.properties`. Do not distribute `app-debug.apk`.
-- Do not send keystores, passwords, `.env`, or `google-services.json` to issues or this repository.
+- O instalador Windows **não** tem assinatura Authenticode (`NotSigned`). O SmartScreen pode avisar. Essa é a distribuição Windows aprovada para esta beta gratuita.
+- O APK Android de release é assinado v2 (SHA-256 `1FE4A4B0…`). O keystore **não** entra no Git (`%LOCALAPPDATA%\PixelCut\signing\`). Não faça commit de `keystore.properties`. Não distribua `app-debug.apk`.
+- Não envie keystores, senhas, `.env` ou `google-services.json` para issues nem para este repositório.
 
-## How to report
+## Como reportar
 
-Describe the impact, the app version (and the installer or APK SHA-256 if you have it), and the steps. Do not attach projects that contain personal media.
+Descreva o impacto, a versão do app (e o SHA-256 do instalador ou do APK, se tiver) e os passos. Não anexe projetos com mídia pessoal.
 
-Use GitHub Issues on this repository once it exists. When a dedicated security address exists, it goes here.
+Use as [GitHub Issues](https://github.com/kaellcina/PixelCut/issues) deste repositório. Quando existir um endereço dedicado de segurança, ele entra aqui.
