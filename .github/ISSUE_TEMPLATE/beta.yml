@@ -1,0 +1,32 @@
+name: Beta feedback
+description: Usability, a confusing message, or a request that is not a crash.
+title: "[beta] "
+labels: ["beta"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Do not send personal media.
+        Android export currently writes **only the main track** (no overlays, titles, transitions, music track).
+        Windows export **does** include effects and transitions.
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Install
+        - First project
+        - Import
+        - Timeline
+        - Text / effects
+        - Export
+        - Android
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+    validations:
+      required: true

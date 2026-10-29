@@ -1,0 +1,39 @@
+{
+  "name": "pixelcut-video-editor",
+  "version": "0.1.0",
+  "description": "PixelCut — free public-beta video editor for Windows (Electron + FFmpeg) and Android (Capacitor + Media3)",
+  "author": "Kaell Soares Calacina",
+  "main": "electron/main.cjs",
+  "private": true,
+  "license": "MIT",
+  "scripts": {
+    "build": "vite build",
+    "start": "npm run build && electron .",
+    "test:export": "node scripts/test-editor.cjs && node scripts/test-projects.cjs && node scripts/test-project-path.cjs && node scripts/test-ffprobe.cjs && node scripts/test-export.cjs && node scripts/test-export-duration.cjs",
+    "test:project-path": "node scripts/test-project-path.cjs",
+    "test:electron": "node scripts/test-electron-boot.cjs",
+    "test:gui": "node scripts/test-gui-flow.cjs",
+    "dist:win": "npm run build && npx --yes electron-builder@26.18.0 --win nsis",
+    "android:sync": "npm run build && npx cap sync android",
+    "android:open": "npx cap open android",
+    "android:debug": "npm run android:sync && cd android && gradlew.bat assembleDebug",
+    "android:release": "npm run android:sync && cd android && gradlew.bat assembleRelease"
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.5.3",
+    "@capacitor/core": "^8.5.3",
+    "@capacitor/filesystem": "^8.1.5"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^8.5.3",
+    "@vitejs/plugin-react": "^4.3.4",
+    "electron": "44.10.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "vite": "^6.0.7"
+  },
+  "allowScripts": {
+    "electron@44.10.0": true,
+    "esbuild@0.25.12": true
+  }
+}

@@ -1,0 +1,99 @@
+name: Build PixelCut for Windows
+
+# Binaries are generated only when a person runs this workflow in the Actions UI.
+# Tag pushes do not build or upload installers. GitHub Releases are a second
+# explicit opt-in (publish_release = true).
+
+"on":
+  workflow_dispatch:
+    inputs:
+      build_installer:
+        description: "Build the NSIS installer and upload it as a workflow artifact (not a GitHub Release)."
+        type: boolean
+        required: true
+        default: true
+      publish_release:
+        description: "Also publish a GitHub Release? Leave false unless licenses, SHA-256, and corresponding source are already reviewed."
+        type: boolean
+        required: true
+        default: false
+      release_tag:
+        description: "Tag of the version (example: v0.1.0-beta.1). Used only if publish_release is true."
+        type: string
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build installer
+    if: inputs.build_installer == true
+    runs-on: windows-latest
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build application
+        run: npm run build
+
+      - name: Test export
+        run: npm run test:export
+
+      - name: Build Windows installer
+        run: npm run dist:win
+
+      - name: Upload installer artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: PixelCut-Windows-Installer
+          path: release/PixelCut-Setup-*.exe
+          if-no-files-found: error
+          retention-days: 14
+
+  publish-release:
+    name: Publish GitHub Release (manual opt-in only)
+    if: inputs.publish_release == true
+    needs: build
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Validate release tag
+        shell: pwsh
+        env:
+          RELEASE_TAG: ${{ inputs.release_tag }}
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:RELEASE_TAG) -or -not $env:RELEASE_TAG.StartsWith('v')) {
+            throw 'Set release_tag starting with v, for example v0.1.0-beta.1.'
+          }
+
+      - name: Download installer artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: PixelCut-Windows-Installer
+          path: release
+
+      - name: Publish GitHub Release as draft
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ inputs.release_tag }}
+          target_commitish: ${{ github.sha }}
+          name: PixelCut ${{ inputs.release_tag }}
+          files: release/PixelCut-Setup-*.exe
+          generate_release_notes: false
+          draft: true
+          body: |
+            Draft created by workflow_dispatch. Paste the prepared notes from
+            docs/RELEASE_NOTES_v0.1.0-beta.1.md, attach the Android APK and the
+            FFmpeg corresponding-source zip, and publish only after SHA-256 review.

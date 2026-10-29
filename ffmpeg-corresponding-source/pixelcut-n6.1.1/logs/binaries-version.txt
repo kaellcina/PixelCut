@@ -1,0 +1,55 @@
+=== ffmpeg -version ===
+ffmpeg version 6.1.1 Copyright (c) 2000-2023 the FFmpeg developers
+built with gcc 16.2.0 (Rev6, Built by MSYS2 project)
+configuration: --prefix=/c/pixelcut-ffmpeg-n611/prefix --pkg-config-flags=--static --extra-cflags=-I/c/pixelcut-ffmpeg-n611/prefix/include --extra-ldflags='-L/c/pixelcut-ffmpeg-n611/prefix/lib -static' --extra-libs='-lstdc++ -lsamplerate -lfftw3 -lz -lpthread' --arch=x86_64 --target-os=mingw32 --pkg-config=pkgconf --enable-gpl --enable-static --disable-shared --disable-autodetect --disable-debug --disable-doc --disable-htmlpages --disable-manpages --disable-podpages --disable-txtpages --disable-ffplay --disable-network --disable-indevs --enable-indev=lavfi --disable-outdevs --enable-libx264 --enable-librubberband --enable-libfreetype --enable-libharfbuzz --enable-zlib
+libavutil      58. 29.100 / 58. 29.100
+libavcodec     60. 31.102 / 60. 31.102
+libavformat    60. 16.100 / 60. 16.100
+libavdevice    60.  3.100 / 60.  3.100
+libavfilter     9. 12.100 /  9. 12.100
+libswscale      7.  5.100 /  7.  5.100
+libswresample   4. 12.100 /  4. 12.100
+libpostproc    57.  3.100 / 57.  3.100
+=== ffmpeg -buildconf ===
+
+  configuration:
+    --prefix=/c/pixelcut-ffmpeg-n611/prefix
+    --pkg-config-flags=--static
+    --extra-cflags=-I/c/pixelcut-ffmpeg-n611/prefix/include
+    --extra-ldflags='-L/c/pixelcut-ffmpeg-n611/prefix/lib -static'
+    --extra-libs='-lstdc++ -lsamplerate -lfftw3 -lz -lpthread'
+    --arch=x86_64
+    --target-os=mingw32
+    --pkg-config=pkgconf
+    --enable-gpl
+    --enable-static
+    --disable-shared
+    --disable-autodetect
+    --disable-debug
+    --disable-doc
+    --disable-htmlpages
+    --disable-manpages
+    --disable-podpages
+    --disable-txtpages
+    --disable-ffplay
+    --disable-network
+    --disable-indevs
+    --enable-indev=lavfi
+    --disable-outdevs
+    --enable-libx264
+    --enable-librubberband
+    --enable-libfreetype
+    --enable-libharfbuzz
+    --enable-zlib
+=== ffprobe -version ===
+ffprobe version 6.1.1 Copyright (c) 2007-2023 the FFmpeg developers
+built with gcc 16.2.0 (Rev6, Built by MSYS2 project)
+configuration: --prefix=/c/pixelcut-ffmpeg-n611/prefix --pkg-config-flags=--static --extra-cflags=-I/c/pixelcut-ffmpeg-n611/prefix/include --extra-ldflags='-L/c/pixelcut-ffmpeg-n611/prefix/lib -static' --extra-libs='-lstdc++ -lsamplerate -lfftw3 -lz -lpthread' --arch=x86_64 --target-os=mingw32 --pkg-config=pkgconf --enable-gpl --enable-static --disable-shared --disable-autodetect --disable-debug --disable-doc --disable-htmlpages --disable-manpages --disable-podpages --disable-txtpages --disable-ffplay --disable-network --disable-indevs --enable-indev=lavfi --disable-outdevs --enable-libx264 --enable-librubberband --enable-libfreetype --enable-libharfbuzz --enable-zlib
+libavutil      58. 29.100 / 58. 29.100
+libavcodec     60. 31.102 / 60. 31.102
+libavformat    60. 16.100 / 60. 16.100
+libavdevice    60.  3.100 / 60.  3.100
+libavfilter     9. 12.100 /  9. 12.100
+libswscale      7.  5.100 /  7.  5.100
+libswresample   4. 12.100 /  4. 12.100
+libpostproc    57.  3.100 / 57.  3.100

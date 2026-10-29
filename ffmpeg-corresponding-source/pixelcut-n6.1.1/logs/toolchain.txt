@@ -1,0 +1,9 @@
+date=2026-10-29T14:37:54Z
+uname=MINGW64_NT-10.0-26300 <build-host> 3.6.11-00eb8435.x86_64 2026-10-16 10:03 UTC x86_64 Msys
+gcc=gcc.exe (Rev6, Built by MSYS2 project) 16.2.0
+gxx=g++.exe (Rev6, Built by MSYS2 project) 16.2.0
+nasm=NASM version 3.02 compiled on Jul  4 2026
+pkgconf=3.0.10
+make=GNU Make 4.4.1
+meson=1.12.1
+ninja=1.13.2

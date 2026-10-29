@@ -1,0 +1,51 @@
+# Dependências e builds
+node_modules/
+dist/
+release/
+*.log
+
+# Duplicate leftover at the PixelCut folder root (real module is electron/ffmpeg.cjs)
+/ffmpeg.cjs
+
+# Segredos e signing — nunca versionar
+.env
+.env.*
+*.jks
+*.keystore
+*.p12
+*.pem
+key.properties
+keystore.properties
+android/keystore.properties
+google-services.json
+credentials.json
+android/local.properties
+
+# Android gerado
+android/.gradle/
+android/build/
+android/app/build/
+android/app/release/
+android/captures/
+android/capacitor-cordova-android-plugins/build/
+*.apk
+*.aab
+
+# IDE / SO
+.idea/
+*.iml
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Restos de teste local (não apagar da máquina; só não versionar)
+.tmp-*/
+tmp/
+smoke-out/
+
+# Signing leftovers if they ever land in the tree
+*.dpapi
+storepass.dpapi
+
+# FFmpeg corresponding-source rebuild objects (runtime copies live in third-party/ffmpeg)
+ffmpeg-corresponding-source/**/dist/*.exe

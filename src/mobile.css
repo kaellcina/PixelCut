@@ -1,0 +1,363 @@
+/* Phone editor. Desktop and a narrow desktop window stay on pixelcut-theme.css. */
+
+.app.mobile {
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --dock: 64px;
+  --sheet: min(44dvh, calc(100dvh - var(--safe-top) - var(--safe-bottom) - var(--dock) - 168px));
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
+  padding-top: var(--safe-top);
+  padding-bottom: var(--safe-bottom);
+}
+
+.app.mobile.sheet-tall {
+  --sheet: min(74dvh, calc(100dvh - var(--safe-top) - var(--safe-bottom) - var(--dock) - 52px));
+}
+
+.app.mobile .topbar {
+  position: relative;
+  flex: none;
+  height: auto;
+  min-height: 52px;
+  padding: 6px 8px;
+  gap: 8px;
+}
+.app.mobile .brand { flex: 1 1 auto; min-width: 0; gap: 8px; }
+.app.mobile .brand-home { flex: 1 1 auto; min-width: 0; min-height: 44px; }
+.app.mobile .save-status { display: none; }
+.home.mobile .home-top { min-height: 56px; padding: 8px 12px; }
+.home.mobile .home-body { width: calc(100% - 24px); padding: 16px 0 32px; }
+.home.mobile .home-heading h1 { font-size: 22px; }
+.home.mobile .home-new { display: inline-flex; min-height: 44px; }
+.home.mobile .home-actions .primary { display: none; }
+.home.mobile .home-grid { grid-template-columns: 1fr; gap: 12px; }
+.home.mobile .home-card-body { padding: 14px 16px 16px; }
+.home.mobile .home-card-body h2 { font-size: 16px; }
+.home.mobile .home-more { width: 44px; min-height: 44px; top: 4px; right: 4px; }
+.home.mobile .home-empty { margin-top: 36px; }
+.home.mobile .home-empty-actions, .home.mobile .home-actions { gap: 8px; }
+.home.mobile .home-empty-actions button, .home.mobile .header-button, .home.mobile .home-menu button {
+  min-height: 44px;
+}
+.home.mobile .home-menu { min-width: 200px; }
+.app.mobile .brand img { width: 28px; height: 28px; flex: none; }
+.app.mobile .brand-name {
+  position: static;
+  width: auto;
+  height: auto;
+  overflow: hidden;
+  clip: auto;
+  color: #f4f8fc;
+  font-size: 16px;
+  font-weight: 750;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.app.mobile .brand-divider,
+.app.mobile .project-title { display: none; }
+.app.mobile .actions { flex: none; gap: 4px; }
+.app.mobile .icon-button,
+.app.mobile .export-button {
+  min-width: 44px;
+  min-height: 44px;
+  padding-inline: 10px;
+  font-size: 14px;
+}
+.app.mobile .export-button { min-width: 0; }
+
+.app.mobile .menu-scrim { z-index: 55; inset: 0; background: transparent; }
+.app.mobile .header-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 8px;
+  z-index: 60;
+  display: grid;
+  gap: 4px;
+  min-width: 180px;
+  padding: 8px;
+  background: #15202c;
+  border: 1px solid #315170;
+  border-radius: 12px;
+  box-shadow: 0 12px 32px #000a;
+}
+.app.mobile .header-menu button {
+  min-height: 44px;
+  justify-content: flex-start;
+  padding-inline: 12px;
+  text-align: left;
+  background: #101820;
+  border: 1px solid #243446;
+  border-radius: 8px;
+}
+
+.app.mobile .workspace {
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  height: auto;
+  min-height: 0;
+  overflow: visible;
+}
+.app.mobile .preview {
+  height: auto;
+  min-height: 0;
+  border: 0;
+}
+.app.mobile .preview-heading { display: none; }
+.app.mobile .stage-wrap {
+  flex: none;
+  width: 100%;
+  height: min(38dvh, calc(100vw * var(--stage-ratio, 0.5625)), calc(100dvh - var(--safe-top) - var(--safe-bottom) - var(--dock) - 300px));
+  min-height: 112px;
+  padding: 6px 8px 0;
+}
+.app.mobile .transport {
+  min-height: 52px;
+  gap: 8px;
+  padding: 4px 8px 6px;
+}
+.app.mobile .transport-icon,
+.app.mobile .play { min-width: 44px; min-height: 44px; }
+.app.mobile .play { width: 48px; height: 48px; font-size: 16px; }
+.app.mobile .tc { font-size: 13px; }
+
+.app.mobile .timeline {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.app.mobile .timeline-heading { min-height: 44px; }
+.app.mobile .tl-toolbar {
+  flex-wrap: nowrap;
+  gap: 6px;
+  padding: 4px 8px;
+  overflow: hidden;
+}
+.app.mobile .tl-tools-pin { flex: 0 0 auto; overflow: visible; }
+.app.mobile .tl-tools { flex: 1 1 auto; min-width: 0; overflow-x: auto; scrollbar-width: none; }
+.app.mobile .zoom-controls { flex: 0 0 auto; }
+.app.mobile .time-edit { min-height: 36px; padding-inline: 6px; }
+.app.mobile .tool-button,
+.app.mobile .zoom-controls .icon-button { min-height: 40px; min-width: 40px; flex: none; }
+.app.mobile .tl-toolbar input[type='range'] { width: 52px; flex: none; }
+.app.mobile .touch-hint {
+  flex: none;
+  margin: 0;
+  padding: 2px 10px 4px;
+  overflow: hidden;
+  color: #8ea3b8;
+  font-size: 11px;
+  line-height: 1.3;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  background: #0c131b;
+}
+.app.mobile .tl-scroll {
+  touch-action: pan-x pan-y;
+  overscroll-behavior: contain;
+}
+.app.mobile .clip { touch-action: pan-y; }
+.app.mobile .handle {
+  touch-action: none;
+  width: 22px;
+  background: #ffffff2e;
+}
+.app.mobile .handle::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  right: auto;
+  bottom: auto;
+  left: 50%;
+  width: 3px;
+  height: 18px;
+  border-radius: 2px;
+  background: #fff;
+  transform: translate(-50%, -50%);
+}
+.app.mobile .tl-row { height: 42px; }
+.app.mobile .tl-row.main { height: 64px; }
+.app.mobile .tl-row.ruler { height: 36px; }
+.app.mobile .playhead-handle { height: 40px; }
+.app.mobile .playhead-handle::before { width: 14px; height: 18px; }
+.app.mobile .tl-row.linked-audio,
+.app.mobile .tl-row.audio-row { height: 42px; }
+.app.mobile .empty-banner {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 4px 8px 0;
+  padding: 4px 8px;
+  color: #9aafc2;
+  font-size: 12px;
+  line-height: 1.3;
+  background: #101923;
+  border: 1px dashed #2c4156;
+  border-radius: 12px;
+}
+.app.mobile .empty-banner span { min-width: 0; }
+.app.mobile .empty-banner .primary { flex: none; min-height: 36px; padding-inline: 12px; }
+.app.mobile .tl-head {
+  width: 64px;
+  min-width: 64px;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 1px;
+  padding: 2px 6px;
+  font-size: 12px;
+}
+.app.mobile .tl-name {
+  display: block;
+  max-width: 52px;
+  overflow: hidden;
+  color: #9aafc2;
+  font-size: 9px;
+  font-weight: 550;
+  line-height: 1.1;
+  letter-spacing: 0;
+}
+.app.mobile .transition-mark { width: 28px; height: 28px; margin-top: -14px; }
+.app.mobile .timeline-empty { padding: 8px; }
+.app.mobile .timeline-dropzone { gap: 8px; padding: 16px 14px; }
+.app.mobile .timeline-dropzone .primary { min-height: 44px; padding-inline: 16px; }
+
+.app.mobile .mobile-dock {
+  flex: none;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 2px;
+  height: var(--dock);
+  padding: 4px 4px 2px;
+  background: #0e151e;
+  border-top: 1px solid #1d2a38;
+}
+.app.mobile .dock-button {
+  min-height: 52px;
+  padding: 4px 2px;
+  color: #9aafc2;
+  font-size: 11px;
+  line-height: 1.15;
+  border-radius: 10px;
+}
+.app.mobile .dock-button.active { color: #f4fbff; background: #17324d; }
+
+.app.mobile .sheet-bar {
+  position: fixed;
+  right: 0;
+  left: 0;
+  z-index: 46;
+  bottom: calc(var(--safe-bottom) + var(--dock) + var(--sheet) - 44px);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 44px;
+  padding: 0 10px;
+}
+.app.mobile .sheet-grab {
+  flex: 1;
+  min-height: 36px;
+  color: #d5e4f2;
+  background: transparent;
+}
+.app.mobile .sheet-grab::before {
+  content: '';
+  display: block;
+  width: 36px;
+  height: 4px;
+  margin: 0 auto 2px;
+  border-radius: 4px;
+  background: #6d8296;
+}
+.app.mobile .sheet-close { min-width: 44px; min-height: 36px; }
+
+.app.mobile .library,
+.app.mobile .inspector {
+  position: fixed;
+  top: auto;
+  right: 0;
+  bottom: calc(var(--safe-bottom) + var(--dock));
+  left: 0;
+  z-index: 40;
+  width: 100%;
+  height: var(--sheet);
+  padding-top: 40px;
+  overflow: hidden;
+  border: 0;
+  border-radius: 16px 16px 0 0;
+  box-shadow: 0 -12px 32px #0008;
+  transform: translateY(110%);
+}
+.app.mobile .library.open,
+.app.mobile .inspector.open { transform: none; visibility: visible; pointer-events: auto; }
+.app.mobile .library:not(.open),
+.app.mobile .inspector:not(.open) { visibility: hidden; pointer-events: none; }
+.app.mobile .inspector { overflow: auto; overscroll-behavior: contain; }
+.app.mobile .media-grid,
+.app.mobile .asset-catalog,
+.app.mobile .asset-empty {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+.app.mobile .thumb .add,
+.app.mobile .thumb .remove {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  min-height: 36px;
+}
+.app.mobile .drawer-scrim {
+  display: block;
+  position: fixed;
+  z-index: 35;
+  inset: var(--safe-top) 0 calc(var(--safe-bottom) + var(--dock)) 0;
+  background: #0006;
+  border: 0;
+}
+.app.mobile .toast {
+  left: 12px;
+  right: 12px;
+  bottom: calc(var(--safe-bottom) + var(--dock) + 8px);
+}
+
+@media (orientation: landscape) {
+  .app.mobile {
+    --dock: 52px;
+    --sheet: min(64dvh, calc(100dvh - var(--safe-top) - var(--safe-bottom) - var(--dock) - 48px));
+  }
+  .app.mobile .stage-wrap {
+    height: min(34dvh, calc(100vw * var(--stage-ratio, 0.5625)));
+    min-height: 72px;
+  }
+  .app.mobile .topbar { min-height: 44px; }
+  .app.mobile .tl-row,
+  .app.mobile .tl-row.linked-audio,
+  .app.mobile .tl-row.audio-row { height: 38px; }
+  .app.mobile .tl-row.main { height: 52px; }
+  .app.mobile .touch-hint { display: none; }
+}
+
+@media (max-height: 520px) {
+  .app.mobile { --dock: 48px; }
+  .app.mobile .topbar { min-height: 44px; padding: 2px 8px; }
+  .app.mobile .icon-button,
+  .app.mobile .export-button,
+  .app.mobile .transport-icon,
+  .app.mobile .play { min-width: 40px; min-height: 40px; }
+  .app.mobile .play { width: 40px; height: 40px; }
+  .app.mobile .transport { min-height: 42px; padding: 0 8px; }
+  .app.mobile .stage-wrap { min-height: 96px; height: min(120px, 32dvh, calc(100vw * var(--stage-ratio, 0.5625))); }
+  .app.mobile .empty-banner,
+  .app.mobile .touch-hint { display: none; }
+  .app.mobile .timeline-heading { min-height: 36px; }
+  .app.mobile .tool-button,
+  .app.mobile .zoom-controls .icon-button { min-height: 36px; }
+}

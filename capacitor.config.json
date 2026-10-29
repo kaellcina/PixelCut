@@ -1,0 +1,8 @@
+{
+  "appId": "com.pixelcut.editor",
+  "appName": "PixelCut",
+  "webDir": "dist",
+  "android": {
+    "path": "android"
+  }
+}

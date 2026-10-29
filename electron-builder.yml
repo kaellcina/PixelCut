@@ -1,0 +1,42 @@
+appId: com.pixelcut.editor
+productName: PixelCut
+artifactName: ${productName}-Setup-${version}-beta.1.${ext}
+directories:
+  buildResources: assets
+  output: release
+
+files:
+  - dist/**/*
+  - electron/**/*
+  - shared/**/*
+  - assets/icon.png
+  - assets/icon.ico
+  - third-party/ffmpeg/**/*
+  - package.json
+  - LICENSE
+  - THIRD_PARTY_NOTICES.md
+
+extraResources:
+  - from: LICENSE
+    to: LICENSE
+  - from: THIRD_PARTY_NOTICES.md
+    to: THIRD_PARTY_NOTICES.md
+
+asar: true
+asarUnpack:
+  - third-party/ffmpeg/**/*
+
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+  icon: assets/icon.ico
+
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: PixelCut
+  license: assets/installer-license.txt
