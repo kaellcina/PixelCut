@@ -23,19 +23,19 @@ Windows e Android **não** têm os mesmos recursos. No Android, a exportação a
 
 ## Capturas de tela
 
-Imagens reais do PixelCut 0.1.0 no Windows, não mockups.
+Janela real do PixelCut 0.1.0 no Windows. A mídia da demonstração é gerada (padrão de teste e o ícone do app) — sem rostos nem arquivos pessoais.
 
 <p align="center">
-  <img src="docs/screenshots/home.png" alt="Tela inicial do PixelCut, com projetos recentes" width="820">
+  <img src="docs/screenshots/editor-timeline.png" alt="Editor e linha do tempo do PixelCut" width="900">
 </p>
 
-<p align="center"><em>Tela inicial — projetos recentes neste computador</em></p>
+<p align="center"><em>Editor — preview, biblioteca, propriedades e linha do tempo com vídeo, texto, áudio e sobreposição</em></p>
 
 <p align="center">
-  <img src="docs/screenshots/editor-timeline.png" alt="Editor e linha do tempo do PixelCut" width="820">
+  <img src="docs/screenshots/home.png" alt="Tela inicial do PixelCut" width="820">
 </p>
 
-<p align="center"><em>Editor — biblioteca, preview, propriedades e linha do tempo</em></p>
+<p align="center"><em>Tela inicial — começar um projeto neste computador</em></p>
 
 ## O que o PixelCut faz
 
