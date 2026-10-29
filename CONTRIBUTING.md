@@ -5,7 +5,7 @@ Obrigado por ajudar nesta beta pública.
 ## Regras básicas
 
 - Mantenha Windows (Electron + FFmpeg) e Android (Capacitor + Media3) como dois motores. Não substitua um pelo outro.
-- Não coloque no repositório APK de depuração, keystore, `.env` ou mídia de utilizador.
+- Não coloque no repositório APK de depuração, keystore, `.env` ou mídia de usuário.
 - Não trate o `spawn` do FFmpeg como autorização para copiar código GPL para o editor, nem para abandonar o pacote de fontes correspondentes.
 - Não reconstrua o FFmpeg a menos que a mudança seja sobre esse binário. O par enviado é o PixelCut n6.1.1 (`050577AF…` / `0BB9D300…`).
 

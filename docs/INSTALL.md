@@ -6,13 +6,13 @@ Quando a versão `v0.1.0-beta.1` for **publicada**, os downloads ficam em:
 
 Neste momento a Release ainda está em rascunho: os links acima **ainda não** servem como download público.
 
-Nada neste documento envia ficheiros para o GitHub.
+Nada neste documento envia arquivos para o GitHub.
 
 ## Instalador Windows (EXE)
 
 | Campo | Valor |
 |---|---|
-| Ficheiro | `PixelCut-Setup-0.1.0-beta.1.exe` |
+| Arquivo | `PixelCut-Setup-0.1.0-beta.1.exe` |
 | SHA-256 | `9D3D4BC53C7851487EB345BD8AE6B88CC5062D098E586E88AE2AD33F3A86F49C` |
 | Tamanho | 144 836 084 bytes |
 | App | Electron 44.10.0, x64 |
@@ -36,7 +36,7 @@ Não use instaladores locais antigos como download da beta pública:
 
 3. Feche o PixelCut se já estiver aberto.
 4. Execute o instalador. O NSIS deixa escolher a pasta e cria atalhos no menu Iniciar e na área de trabalho.
-5. O SmartScreen do Windows pode avisar porque o ficheiro **não** tem assinatura Authenticode. Isso é esperado nesta beta. Confie no SHA-256 acima, não num “editor” da Microsoft.
+5. O SmartScreen do Windows pode avisar porque o arquivo **não** tem assinatura Authenticode. Isso é esperado nesta beta. Confie no SHA-256 acima, não num “editor” da Microsoft.
 6. **Não** apague `%AppData%\PixelCut\projects`. Desinstalar o app deve deixar os projetos, salvo se você remover essa pasta.
 
 O instalador mostra MIT (código original do PixelCut) e GPL-2.0-or-later (FFmpeg/FFprobe). Depois da instalação:
@@ -72,7 +72,7 @@ Notas do produto: [ANDROID.md](ANDROID.md). Assinatura: [ANDROID_SIGNING.md](AND
 ### Instalação direta (sideload)
 
 1. Desinstale um PixelCut de depuração se a instalação for recusada (`INSTALL_FAILED_UPDATE_INCOMPATIBLE`). Isso apaga os projetos privados do app.
-2. Permita instalar de fontes desconhecidas no navegador ou no app Ficheiros.
+2. Permita instalar de fontes desconhecidas no navegador ou no app Arquivos.
 3. Abra `PixelCut-Android-0.1.0-beta.1.apk` e confira o SHA-256 acima.
 4. Avisos de fonte desconhecida / Play Protect são esperados num sideload do GitHub.
 5. A exportação ainda grava **somente a faixa principal de vídeo**. Sobreposição, títulos, transições, chroma, efeitos do catálogo, efeitos de voz e uma faixa de música separada ficam de fora.
@@ -93,4 +93,4 @@ Resumo da oferta: [`../ffmpeg-corresponding-source/README.md`](../ffmpeg-corresp
 
 ## Bugs
 
-[Issues do repositório](https://github.com/kaellcina/PixelCut/issues) (modelos em `.github/ISSUE_TEMPLATE/`). Inclua o SHA-256 do ficheiro que instalou. Não anexe mídia pessoal, keystores ou `.env`.
+[Issues do repositório](https://github.com/kaellcina/PixelCut/issues) (modelos em `.github/ISSUE_TEMPLATE/`). Inclua o SHA-256 do arquivo que instalou. Não anexe mídia pessoal, keystores ou `.env`.

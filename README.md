@@ -68,7 +68,7 @@ Quando a versão for publicada, os arquivos ficarão em:
 
 Passo a passo: [docs/INSTALL.md](docs/INSTALL.md).
 
-- **Windows:** baixe o EXE, confira o SHA-256, execute o instalador NSIS. O ficheiro **não** tem assinatura Authenticode — o SmartScreen pode avisar. Isso é esperado nesta beta.
+- **Windows:** baixe o EXE, confira o SHA-256, execute o instalador NSIS. O arquivo **não** tem assinatura Authenticode — o SmartScreen pode avisar. Isso é esperado nesta beta.
 - **Android:** o APK é **assinado** (esquema v2) e distribuído **fora da Play Store**. Ative a instalação de fontes desconhecidas, confira o SHA-256 e instale. Se já existir um PixelCut de depuração, desinstale-o antes.
 
 Não use instaladores antigos (`PixelCut-Setup-0.1.0.exe`, `…-electron44.exe`, `…-ownffmpeg.exe`) nem `app-debug.apk`.
@@ -122,7 +122,7 @@ Inclua:
 - Versão ou o SHA-256 do instalador/APK
 - Passos, resultado esperado e o que aconteceu
 
-**Não** envie mídia pessoal, pasta de projetos, keystore ou ficheiros `.env`.
+**Não** envie mídia pessoal, pasta de projetos, keystore ou arquivos `.env`.
 
 ## Como contribuir
 
