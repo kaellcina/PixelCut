@@ -30,7 +30,8 @@ export function createAutosave({
       emit();
       inFlight = job.gen;
       try {
-        await save(job.payload, job.gen);
+        const payload = typeof job.payload === 'function' ? job.payload() : job.payload;
+        await save(payload, job.gen);
         lastSaved = job.fp;
         if (!pending) {
           status = 'saved';

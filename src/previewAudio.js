@@ -1,5 +1,5 @@
 // Pure audio planning for the preview (no DOM / Web Audio), tested by scripts/test-editor.cjs.
-import { clipLength, clipSpeed, isLinked, videoClipsAt, videoLayout } from './store.js';
+import { clipLength, clipSpeed, isLinked, nudgePreviewTime, sourcePreviewTime, videoClipsAt, videoLayout } from './store.js';
 
 export function envelopeVolume(clip, timelineLocal, length) {
   const fadeIn = Math.max(0, clip.fadeIn || 0);
@@ -26,7 +26,7 @@ const IDLE = { clipId: null, key: 'idle', effects: [], volume: 0, localTime: 0 }
 // element switches clip so the chain is rebuilt instead of carrying state over.
 // Volumes follow the export's acrossfade (default linear curves) during the overlap.
 export function mainTrackAudio(project, time) {
-  const layers = videoClipsAt(project, time);
+  const layers = videoClipsAt(project, nudgePreviewTime(project, time));
   const incoming = layers[1];
   const progress = incoming && incoming.overlap > 0
     ? Math.max(0, Math.min(1, (time - incoming.start) / incoming.overlap))
@@ -40,7 +40,7 @@ export function mainTrackAudio(project, time) {
       key: clip.id,
       effects: audible ? [...(clip.audioEffects || [])] : [],
       volume: audible ? (clip.volume ?? 1) * gain : 0,
-      localTime: clip.in + (time - layer.start) * clipSpeed(clip),
+      localTime: sourcePreviewTime(clip, time, layer.start, project.fps),
     };
   };
   return {

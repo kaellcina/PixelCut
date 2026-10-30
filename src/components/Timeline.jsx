@@ -1,27 +1,27 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { MIN_CLIP, clipLength, formatTime, isLinked, toFileUrl, uid, videoInsertIndex, videoLayout } from '../store.js';
+import { MIN_CLIP, clipLength, formatTime, isLinked, nearestVideoCut, toFileUrl, uid, videoInsertIndex, videoLayout } from '../store.js';
 import { TimeField } from './Preview.jsx';
-import { captureMediaFrames, frameAt, prefetchFilmstrips } from '../filmstrip.js';
+import { captureMediaFrames, filmstripTileCount, frameAt, prefetchFilmstrips } from '../filmstrip.js';
 import { transitionById } from '../catalog.js';
 import { drawWaveform, loadWaveform } from '../waveform.js';
+import { overlayLanes, visibleTimelineTracks } from '../timelineTracks.js';
+import { isPlayheadHit, playheadNeedsFollow, playheadScrollLeft, playheadX, scrubAutoScroll } from '../playheadView.js';
 
 const HEADER = 48;
 const PPS_MIN = 8;
 const PPS_MAX = 420;
 
-export default function Timeline({ project, time, duration, playing, selection, onSelect, onSeek, onSeekLive, onPause, dispatch, onSplit, onDelete, onAddText, onDropMedia, onDropEffect, onDropTransition, onUnlink, onDropAudioEffect, onImport, touch = false, onAdjust = null, onBrowse = null }) {
+export default function Timeline({ project, time, duration, playing, selection, onSelect, onSeek, onSeekLive, onPause, dispatch, onSplit, onDelete, onAddText, onDropMedia, onDropEffect, onDropTransition, onUnlink, onDropAudioEffect, onImport, touch = false, onAdjust = null, onBrowse = null, onOpenTransitions = null, cutToken = 0, onScrubbing = null, focusToken = 0 }) {
   const [pps, setPps] = useState(56);
   const [dragOverTrack, setDragOverTrack] = useState(null);
   const [emptyHint, setEmptyHint] = useState('');
   const [scrubbing, setScrubbing] = useState(false);
+  const [cutFlash, setCutFlash] = useState(false);
   const [movingId, setMovingId] = useState(null);
   const [dragDx, setDragDx] = useState(0);
   const scrollRef = useRef(null);
   const gestureRef = useRef(null);
   const followPlayhead = useRef(false);
-  const followLock = useRef(false);
-  const pendingScroll = useRef(null);
-  const autoScrollTimer = useRef(0);
   const projectRef = useRef(project);
   const ppsRef = useRef(pps);
   projectRef.current = project;
@@ -34,10 +34,18 @@ export default function Timeline({ project, time, duration, playing, selection, 
   const width = Math.max((duration + 8) * pps, 720);
   const selectedVideo = selection?.track === 'video' && project.videoClips.find((clip) => clip.id === selection.id);
   const canUnlink = selectedVideo && isLinked(selectedVideo);
+  const ppsMax = touch ? 180 : PPS_MAX;
 
   useEffect(() => {
-    prefetchFilmstrips(project.media);
-  }, [project.media]);
+    prefetchFilmstrips(project.media, { compact: touch });
+  }, [project.media, touch]);
+
+  useEffect(() => {
+    if (!cutToken) return undefined;
+    setCutFlash(true);
+    const timer = window.setTimeout(() => setCutFlash(false), 320);
+    return () => window.clearTimeout(timer);
+  }, [cutToken]);
 
   useEffect(() => () => {
     gestureRef.current?.stop({ type: 'blur' });
@@ -60,7 +68,7 @@ export default function Timeline({ project, time, duration, playing, selection, 
   };
 
   const zoomTo = (next, anchorTime) => {
-    const clamped = clamp(next, PPS_MIN, PPS_MAX);
+    const clamped = clamp(next, PPS_MIN, ppsMax);
     const scroller = scrollRef.current;
     const keep = Number.isFinite(anchorTime) ? anchorTime : time;
     setPps(clamped);
@@ -77,7 +85,7 @@ export default function Timeline({ project, time, duration, playing, selection, 
     const scroller = scrollRef.current;
     if (!scroller) return;
     const span = Math.max(duration || 0, 4);
-    const next = clamp((scroller.clientWidth - head - 24) / span, PPS_MIN, PPS_MAX);
+    const next = clamp((scroller.clientWidth - head - 24) / span, PPS_MIN, ppsMax);
     setPps(next);
     requestAnimationFrame(() => {
       if (!scrollRef.current) return;
@@ -87,46 +95,33 @@ export default function Timeline({ project, time, duration, playing, selection, 
     });
   };
 
+  const scrollPlayheadIntoView = (align) => {
+    const node = scrollRef.current;
+    if (!node) return;
+    node.dataset.autoscroll = '1';
+    node.scrollLeft = playheadScrollLeft(time, ppsRef.current, head, node.clientWidth, align);
+    requestAnimationFrame(() => { if (scrollRef.current) scrollRef.current.dataset.autoscroll = ''; });
+  };
+
   useEffect(() => {
     followPlayhead.current = !!playing;
-    if (!playing) followLock.current = false;
   }, [playing]);
+
+  useEffect(() => {
+    if (playing || scrubbing) return undefined;
+    scrollPlayheadIntoView(0.42);
+    return undefined;
+  }, [focusToken, isEmpty]);
 
   useEffect(() => {
     const node = scrollRef.current;
     if (!node || !playing || !followPlayhead.current) return;
-    const playX = head + time * pps;
-    const viewLeft = node.scrollLeft;
-    const viewRight = viewLeft + node.clientWidth;
-    const edge = Math.max(48, node.clientWidth * 0.18);
-    const inside = playX > viewLeft + 24 && playX < viewRight - edge;
-    if (followLock.current) {
-      if (inside) followLock.current = false;
-      return;
-    }
-    if (playX <= viewRight - edge) return;
-    const target = Math.max(0, playX - node.clientWidth * 0.35);
-    if (Math.abs(target - viewLeft) < 8) return;
-    followLock.current = true;
-    pendingScroll.current = target;
+    const playX = playheadX(time, pps, head);
+    if (!playheadNeedsFollow(playX, node.scrollLeft, node.clientWidth)) return;
     node.dataset.autoscroll = '1';
-    node.scrollTo({ left: target, behavior: 'smooth' });
-    window.clearTimeout(autoScrollTimer.current);
-    autoScrollTimer.current = window.setTimeout(() => { node.dataset.autoscroll = ''; }, 900);
-  }, [time, playing, pps]);
-
-  useEffect(() => {
-    const node = scrollRef.current;
-    if (!node) return undefined;
-    const onScroll = () => {
-      if (node.dataset.autoscroll === '1') return;
-      if (pendingScroll.current != null && Math.abs(node.scrollLeft - pendingScroll.current) < 16) return;
-      pendingScroll.current = null;
-      followPlayhead.current = false;
-    };
-    node.addEventListener('scroll', onScroll, { passive: true });
-    return () => node.removeEventListener('scroll', onScroll);
-  }, [isEmpty]);
+    node.scrollLeft = playheadScrollLeft(time, pps, head, node.clientWidth, 0.35);
+    requestAnimationFrame(() => { if (scrollRef.current) scrollRef.current.dataset.autoscroll = ''; });
+  }, [time, playing, pps, head]);
 
   useEffect(() => {
     const node = scrollRef.current;
@@ -137,8 +132,16 @@ export default function Timeline({ project, time, duration, playing, selection, 
       const at = timeFromClientX(event.clientX);
       zoomTo(pps * (event.deltaY < 0 ? 1.14 : 0.88), at);
     };
+    const onScroll = () => {
+      if (node.dataset.autoscroll) return;
+      followPlayhead.current = false;
+    };
     node.addEventListener('wheel', onWheel, { passive: false });
-    return () => node.removeEventListener('wheel', onWheel);
+    node.addEventListener('scroll', onScroll, { passive: true });
+    return () => {
+      node.removeEventListener('wheel', onWheel);
+      node.removeEventListener('scroll', onScroll);
+    };
   }, [pps, isEmpty]);
 
   useEffect(() => {
@@ -209,48 +212,141 @@ export default function Timeline({ project, time, duration, playing, selection, 
     return session;
   };
 
+  const applyScrubPoint = (clientX) => {
+    const scroller = scrollRef.current;
+    if (!scroller) return projectTime(clientX);
+    const rect = scroller.getBoundingClientRect();
+    const stepped = scrubAutoScroll({
+      viewportX: clientX - rect.left,
+      viewWidth: scroller.clientWidth,
+      scrollLeft: scroller.scrollLeft,
+      maxScroll: Math.max(0, scroller.scrollWidth - scroller.clientWidth),
+      time: projectTime(clientX),
+      duration,
+      pps: ppsRef.current,
+      headWidth: head,
+      touch,
+    });
+    if (stepped.scrollLeft !== scroller.scrollLeft) {
+      scroller.dataset.autoscroll = '1';
+      scroller.scrollLeft = stepped.scrollLeft;
+      requestAnimationFrame(() => { if (scrollRef.current) scrollRef.current.dataset.autoscroll = ''; });
+    }
+    return stepped.time;
+  };
+
   const scrub = (event) => {
     if (event.button !== 0 || gestureRef.current) return;
-    if (event.target.closest('.tl-head, .clip, .handle, .transition-mark')) return;
+    if (event.target.closest('.tl-head, .handle, .transition-mark')) return;
+    if (event.target.closest('.clip') && !isPlayheadHit(
+      event.clientX - (scrollRef.current?.getBoundingClientRect().left || 0) + (scrollRef.current?.scrollLeft || 0),
+      time,
+      ppsRef.current,
+      head,
+      touch,
+    )) return;
     event.preventDefault();
     event.stopPropagation();
     const origin = time;
-    let latest = projectTime(event.clientX);
+    let pointerX = event.clientX;
+    let latest = applyScrubPoint(pointerX);
     let raf = 0;
+    let edgeRaf = 0;
     if (playing) onPause?.();
-    onSeek(latest);
+    followPlayhead.current = true;
     setScrubbing(true);
+    onScrubbing?.(true);
+    onSeek(latest);
     const session = arm(event, (cancelled) => {
       if (raf) cancelAnimationFrame(raf);
+      if (edgeRaf) cancelAnimationFrame(edgeRaf);
       setScrubbing(false);
+      onScrubbing?.(false);
       onSeek(cancelled ? origin : latest);
     });
     if (!session) return;
+    const pulse = (live) => {
+      latest = applyScrubPoint(pointerX);
+      (live ? (onSeekLive || onSeek) : onSeek)(latest);
+    };
+    const edgeLoop = () => {
+      if (gestureRef.current !== session) return;
+      const scroller = scrollRef.current;
+      if (!scroller) {
+        edgeRaf = 0;
+        return;
+      }
+      const rect = scroller.getBoundingClientRect();
+      const stepped = scrubAutoScroll({
+        viewportX: pointerX - rect.left,
+        viewWidth: scroller.clientWidth,
+        scrollLeft: scroller.scrollLeft,
+        maxScroll: Math.max(0, scroller.scrollWidth - scroller.clientWidth),
+        time: latest,
+        duration,
+        pps: ppsRef.current,
+        headWidth: head,
+        touch,
+      });
+      if (!stepped.delta) {
+        edgeRaf = 0;
+        return;
+      }
+      pulse(true);
+      edgeRaf = requestAnimationFrame(edgeLoop);
+    };
     session.move = (moveEvent) => {
-      latest = projectTime(moveEvent.clientX);
+      pointerX = moveEvent.clientX;
+      if (!edgeRaf) edgeRaf = requestAnimationFrame(edgeLoop);
       if (raf) return;
       raf = requestAnimationFrame(() => {
         raf = 0;
-        (onSeekLive || onSeek)(latest);
+        pulse(true);
       });
     };
     window.addEventListener('pointermove', session.move);
     window.addEventListener('pointerup', session.stop);
     window.addEventListener('pointercancel', session.stop);
     window.addEventListener('blur', session.stop);
+    edgeRaf = requestAnimationFrame(edgeLoop);
+  };
+
+  const scrubFromLine = (event) => {
+    if (event.button !== 0 || gestureRef.current) return;
+    const hit = event.currentTarget;
+    const previous = hit.style.pointerEvents;
+    hit.style.pointerEvents = 'none';
+    const below = document.elementFromPoint(event.clientX, event.clientY);
+    hit.style.pointerEvents = previous;
+    if (below?.closest('.transition-mark, .handle')) return;
+    scrub(event);
+  };
+
+  const grabPlayhead = (event) => {
+    if (event.button !== 0 || gestureRef.current) return;
+    if (event.target.closest('.transition-mark, .handle, .tl-head, .playhead-handle, .playhead-hit')) return;
+    const scroller = scrollRef.current;
+    if (!scroller) return;
+    const rect = scroller.getBoundingClientRect();
+    const contentX = event.clientX - rect.left + scroller.scrollLeft;
+    if (!isPlayheadHit(contentX, time, ppsRef.current, head, touch)) return;
+    scrub(event);
   };
 
   const panTimeline = (event) => {
-    if (event.button !== 0 || event.pointerType === 'touch' || gestureRef.current) return;
-    if (event.target.closest('.clip, .handle, .transition-mark, .playhead-handle, .tl-head')) return;
+    if (event.button !== 0 || gestureRef.current) return;
+    if (event.target.closest('.clip, .handle, .transition-mark, .playhead-handle')) return;
     const scroller = scrollRef.current;
     if (!scroller) return;
     const x0 = event.clientX;
     const y0 = event.clientY;
     const left0 = scroller.scrollLeft;
     const top0 = scroller.scrollTop;
+    followPlayhead.current = false;
     const session = arm(event, () => {});
     if (!session) return;
+    event.preventDefault();
+    event.stopPropagation();
     session.move = (moveEvent) => {
       scroller.scrollLeft = left0 - (moveEvent.clientX - x0);
       scroller.scrollTop = top0 - (moveEvent.clientY - y0);
@@ -431,8 +527,8 @@ export default function Timeline({ project, time, duration, playing, selection, 
   const step = [0.2, 0.5, 1, 2, 5, 10, 15, 30, 60].find((value) => value * pps >= 70) || 120;
   const ticks = [];
   for (let t = 0; t * pps < width; t += step) ticks.push(t);
-  const overlay0 = overlays.filter((clip) => (clip.lane || 0) === 0);
-  const overlay1 = overlays.filter((clip) => clip.lane === 1);
+  const { overlay0, overlay1 } = overlayLanes(project);
+  const shown = visibleTimelineTracks(project, { dragging: !!dragOverTrack });
 
   if (isEmpty && !touch) {
     const dropFirst = (event) => {
@@ -491,112 +587,166 @@ export default function Timeline({ project, time, duration, playing, selection, 
       <div className="timeline-heading">
         <div className="tl-toolbar">
           <div className="tl-tools-pin">
-            <button onClick={onSplit} title="Dividir no ponto da agulha (S)" className="tool-button">Dividir</button>
-            <button onClick={onDelete} disabled={!selection} title={selection ? 'Excluir o clipe selecionado' : 'Selecione um clipe para excluir'} className="tool-button">Excluir</button>
+            <button type="button" onClick={onSplit} title="Dividir no ponto da agulha (S)" className="tool-icon-button split-button" aria-label="Dividir">
+              <ScissorsIcon />
+            </button>
+            <button type="button" onClick={onDelete} disabled={!selection} title={selection ? 'Excluir o clipe selecionado' : 'Selecione um clipe para excluir'} className="tool-icon-button" aria-label="Excluir">×</button>
           </div>
           <div className="tl-tools">
-            {selection?.track === 'video' && <button onClick={onUnlink} disabled={!canUnlink} title={canUnlink ? 'Separar o áudio deste vídeo' : 'Este vídeo já está sem áudio ligado'} className="tool-button">{touch ? 'Soltar' : 'Unlink'}</button>}
-            {touch && selection && <button onClick={onAdjust} disabled={!onAdjust} title="Abrir as propriedades deste clipe" className="tool-button">Ajustar</button>}
-            <button onClick={onAddText} title="Adicionar texto" className="tool-button">Texto</button>
+            {layout.length > 1 && onOpenTransitions && (
+              <button
+                type="button"
+                onClick={() => {
+                  const cut = nearestVideoCut(project, time);
+                  if (cut) {
+                    onSelect({ track: 'transition', id: cut.clip.id });
+                    onSeek(cut.cut);
+                  }
+                  onOpenTransitions();
+                }}
+                title="Abrir transições entre clipes"
+                className="tool-button"
+              >
+                Transição
+              </button>
+            )}
+            {selection?.track === 'video' && (
+              <button type="button" onClick={onUnlink} disabled={!canUnlink} title={canUnlink ? 'Separar o áudio deste vídeo' : 'Este vídeo já está sem áudio ligado'} className="tool-button">
+                {touch ? 'Soltar' : 'Separar áudio'}
+              </button>
+            )}
+            {touch && selection && <button type="button" onClick={onAdjust} disabled={!onAdjust} title="Propriedades do clipe" className="tool-button">Ajustar</button>}
+            {!touch && <button type="button" onClick={onAddText} title="Adicionar texto" className="tool-button">Texto</button>}
           </div>
-          <span className="timeline-time">
-            <TimeField time={time} duration={duration} onCommit={onSeek} />
-            <span className="tc dim">/ {formatTime(duration)}</span>
-          </span>
+          {!touch && (
+            <span className="timeline-time">
+              <TimeField time={time} duration={duration} onCommit={onSeek} />
+              <span className="tc dim">/ {formatTime(duration)}</span>
+            </span>
+          )}
           <div className="zoom-controls">
-            <button className="icon-button" title="Afastar a partir da agulha (-)" onClick={() => zoomTo(pps / 1.2, time)}>−</button>
-            <input aria-label="Zoom da timeline" title="Zoom temporal. A agulha permanece no mesmo instante." type="range" min={PPS_MIN} max={PPS_MAX} value={pps} onChange={(event) => zoomTo(Number(event.target.value), time)} />
+            <button type="button" className="icon-button" title="Afastar a partir da agulha (-)" onClick={() => zoomTo(pps / 1.2, time)}>−</button>
+            <input aria-label="Zoom da timeline" title="Zoom temporal. A agulha permanece no mesmo instante." type="range" min={PPS_MIN} max={ppsMax} value={Math.min(pps, ppsMax)} onChange={(event) => zoomTo(Number(event.target.value), time)} />
             <span className="zoom-readout" title="Intervalo entre as marcas da régua">{step >= 1 ? `${step}s` : `${Math.round(step * 1000)}ms`}</span>
-            <button className="icon-button" title="Aproximar a partir da agulha (+)" onClick={() => zoomTo(pps * 1.2, time)}>+</button>
-            <button className="tool-button" title="Mostrar a duração inteira (\)" onClick={fitZoom}>Ajustar</button>
+            <button type="button" className="icon-button" title="Aproximar a partir da agulha (+)" onClick={() => zoomTo(pps * 1.2, time)}>+</button>
+            <button type="button" className="tool-button zoom-fit" title="Mostrar a duração inteira (\)" onClick={fitZoom}>Tudo</button>
           </div>
         </div>
       </div>
-
-      {touch && !isEmpty && <p className="touch-hint">Arraste o marcador azul para percorrer. Horizontal move o clipe. Bordas cortam. Vertical rola.</p>}
-      <div className="tl-scroll" ref={scrollRef}>
-        <div className="tl-content" style={{ width: width + head }}>
-          <div className="tl-row ruler" onPointerDown={scrub}>
-            <div className="tl-head ruler-head">{formatTime(time).slice(0, 5)}</div>
-            <div className="tl-lane ruler-lane" style={{ backgroundSize: `${step * pps}px 100%` }}>
-              {ticks.map((tick) => <div key={tick} className="tick" style={{ left: tick * pps }}>{formatTime(tick).slice(0, 5)}</div>)}
+      <div className="tl-scroll" ref={scrollRef} onPointerDownCapture={grabPlayhead}>
+        <div className={`tl-content ${cutFlash ? 'cut-flash' : ''}`} style={{ width: width + head }}>
+          <div className="tl-pin">
+            <div className="tl-row ruler" onPointerDown={scrub}>
+              <div className="tl-head ruler-head">{formatTime(time).slice(0, 5)}</div>
+              <div className="tl-lane ruler-lane" style={{ backgroundSize: `${step * pps}px 100%` }}>
+                {ticks.map((tick) => <div key={tick} className="tick" style={{ left: tick * pps }}>{formatTime(tick).slice(0, 5)}</div>)}
+              </div>
             </div>
+
+            <TrackRow label="V" name="Vídeo" type="video" hint="Vídeo principal" dragOverTrack={dragOverTrack} dropProps={dropProps} trackKey="video" onPointerDown={touch ? scrub : panTimeline} onPan={panTimeline} enabled empty={!layout.length}>
+              {layout.map((item) => (
+                <Clip
+                  key={item.clip.id}
+                  pps={pps}
+                  selection={selection}
+                  track="video"
+                  clip={item.clip}
+                  start={item.start}
+                  length={item.end - item.start}
+                  media={mediaById[item.clip.mediaId]}
+                  label={mediaById[item.clip.mediaId]?.name ?? 'Vídeo'}
+                  moving={movingId === item.clip.id}
+                  dragDx={movingId === item.clip.id ? dragDx : 0}
+                  compact={touch}
+                  onDown={(event, mode) => interactClip(event, 'video', item.clip, mode)}
+                />
+              ))}
+              {layout.map((item, index) => index > 0 ? (
+                <button
+                  key={`tr-${item.clip.id}`}
+                  type="button"
+                  className={`transition-mark ${item.clip.transitionIn?.type && item.clip.transitionIn.type !== 'none' ? 'on' : 'off'} ${selection?.track === 'transition' && selection.id === item.clip.id ? 'selected' : ''}`}
+                  style={{ left: (item.start + Math.max(item.overlap, 0) / 2) * pps - (touch ? 22 : 11) }}
+                  title={item.clip.transitionIn?.type ? transitionById(item.clip.transitionIn.type).name : 'Adicionar transição'}
+                  onPointerDown={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    onSelect({ track: 'transition', id: item.clip.id });
+                    onSeek(item.start + item.overlap / 2);
+                    onOpenTransitions?.();
+                  }}
+                >
+                  <span className="transition-mark-face">
+                    <span>{item.clip.transitionIn?.type && item.clip.transitionIn.type !== 'none' ? '◆' : '+'}</span>
+                  </span>
+                </button>
+              ) : null)}
+            </TrackRow>
+
+            {shown.linked && (
+              <TrackRow label="A" name="Áudio" type="audio" hint="Áudio ligado" dragOverTrack={dragOverTrack} dropProps={dropProps} trackKey="linked" onPointerDown={touch ? scrub : panTimeline} onPan={panTimeline} empty={!layout.some((item) => isLinked(item.clip))}>
+                {layout.filter((item) => isLinked(item.clip)).map((item) => (
+                  <div
+                    key={`a-${item.clip.id}`}
+                    className={`clip audio linked ${selection?.track === 'video' && selection.id === item.clip.id ? 'selected' : ''} ${movingId === item.clip.id ? 'moving' : ''}`}
+                    style={{ left: item.start * pps, width: Math.max(14, (item.end - item.start) * pps), transform: movingId === item.clip.id && dragDx ? `translateX(${dragDx}px)` : undefined }}
+                    onPointerDown={(event) => interactClip(event, 'video', item.clip, 'move')}
+                    title="Áudio ligado ao vídeo"
+                  >
+                    <Waveform media={mediaById[item.clip.mediaId]} clipIn={item.clip.in} clipOut={item.clip.out} width={Math.max(14, (item.end - item.start) * pps)} />
+                    <span className="clip-label">Áudio ligado</span>
+                  </div>
+                ))}
+              </TrackRow>
+            )}
           </div>
 
-          <TrackRow label="2" name="Sobrepor" type="overlay" hint="Sobreposição" dragOverTrack={dragOverTrack} dropProps={dropProps} trackKey="overlay2" onPointerDown={panTimeline} enabled empty={!overlay1.length}>
-            {overlay1.map((clip) => (
-              <Clip key={clip.id} pps={pps} selection={selection} track="overlay" clip={clip} start={clip.start} length={clipLength(clip)} media={mediaById[clip.mediaId]} label={mediaById[clip.mediaId]?.name ?? 'Overlay'} moving={movingId === clip.id} onDown={(event, mode) => interactClip(event, 'overlay', clip, mode)} />
-            ))}
-          </TrackRow>
+          {shown.audio && (
+            <TrackRow label="♪" name="Música" type="audio" hint="Áudio" dragOverTrack={dragOverTrack} dropProps={dropProps} trackKey="audio" onPointerDown={panTimeline} onPan={panTimeline} enabled empty={!project.audioClips.length}>
+              {project.audioClips.map((clip) => (
+                <Clip key={clip.id} pps={pps} selection={selection} track="audio" clip={clip} start={clip.start} length={clipLength(clip)} media={mediaById[clip.mediaId]} label={mediaById[clip.mediaId]?.name ?? 'Áudio'} moving={movingId === clip.id} onDown={(event, mode) => interactClip(event, 'audio', clip, mode)} />
+              ))}
+            </TrackRow>
+          )}
 
-          <TrackRow label="1" name="Camada" type="overlay" hint="Vídeo ou imagem" dragOverTrack={dragOverTrack} dropProps={dropProps} trackKey="overlay" onPointerDown={panTimeline} enabled empty={!overlay0.length}>
-            {overlay0.map((clip) => (
-              <Clip key={clip.id} pps={pps} selection={selection} track="overlay" clip={clip} start={clip.start} length={clipLength(clip)} media={mediaById[clip.mediaId]} label={mediaById[clip.mediaId]?.name ?? 'Overlay'} moving={movingId === clip.id} onDown={(event, mode) => interactClip(event, 'overlay', clip, mode)} />
-            ))}
-          </TrackRow>
+          {shown.overlay && (
+            <TrackRow label="1" name="Camada" type="overlay" hint="Vídeo ou imagem" dragOverTrack={dragOverTrack} dropProps={dropProps} trackKey="overlay" onPointerDown={panTimeline} onPan={panTimeline} enabled empty={!overlay0.length}>
+              {overlay0.map((clip) => (
+                <Clip key={clip.id} pps={pps} selection={selection} track="overlay" clip={clip} start={clip.start} length={clipLength(clip)} media={mediaById[clip.mediaId]} label={mediaById[clip.mediaId]?.name ?? 'Overlay'} moving={movingId === clip.id} onDown={(event, mode) => interactClip(event, 'overlay', clip, mode)} />
+              ))}
+            </TrackRow>
+          )}
 
-          <TrackRow label="T" name="Texto" type="text" hint="Texto" dragOverTrack={dragOverTrack} dropProps={dropProps} trackKey="text" onPointerDown={panTimeline} empty={!project.textClips.length}>
-            {project.textClips.map((clip) => (
-              <Clip key={clip.id} pps={pps} selection={selection} track="text" clip={clip} start={clip.start} length={clip.duration} label={clip.text || 'Texto'} moving={movingId === clip.id} onDown={(event, mode) => interactClip(event, 'text', clip, mode)} />
-            ))}
-          </TrackRow>
+          {shown.overlay2 && (
+            <TrackRow label="2" name="Sobrepor" type="overlay" hint="Sobreposição" dragOverTrack={dragOverTrack} dropProps={dropProps} trackKey="overlay2" onPointerDown={panTimeline} onPan={panTimeline} enabled empty={!overlay1.length}>
+              {overlay1.map((clip) => (
+                <Clip key={clip.id} pps={pps} selection={selection} track="overlay" clip={clip} start={clip.start} length={clipLength(clip)} media={mediaById[clip.mediaId]} label={mediaById[clip.mediaId]?.name ?? 'Overlay'} moving={movingId === clip.id} onDown={(event, mode) => interactClip(event, 'overlay', clip, mode)} />
+              ))}
+            </TrackRow>
+          )}
 
-          <TrackRow label="V" name="Vídeo" type="video" hint="Vídeo principal" dragOverTrack={dragOverTrack} dropProps={dropProps} trackKey="video" onPointerDown={panTimeline} enabled empty={!layout.length}>
-            {layout.map((item) => (
-              <Clip
-                key={item.clip.id}
-                pps={pps}
-                selection={selection}
-                track="video"
-                clip={item.clip}
-                start={item.start}
-                length={item.end - item.start}
-                media={mediaById[item.clip.mediaId]}
-                label={mediaById[item.clip.mediaId]?.name ?? 'Vídeo'}
-                moving={movingId === item.clip.id}
-                dragDx={movingId === item.clip.id ? dragDx : 0}
-                onDown={(event, mode) => interactClip(event, 'video', item.clip, mode)}
-              />
-            ))}
-            {layout.map((item, index) => index > 0 ? (
-              <button
-                key={`tr-${item.clip.id}`}
-                className={`transition-mark ${item.clip.transitionIn?.type && item.clip.transitionIn.type !== 'none' ? 'on' : 'off'} ${selection?.track === 'transition' && selection.id === item.clip.id ? 'selected' : ''}`}
-                style={{ left: (item.start + Math.max(item.overlap, 0) / 2) * pps - 9 }}
-                title={item.clip.transitionIn?.type ? transitionById(item.clip.transitionIn.type).name : 'Adicionar transição'}
-                onPointerDown={(event) => {
-                  event.stopPropagation();
-                  onSelect({ track: 'transition', id: item.clip.id });
-                  onSeek(item.start + item.overlap / 2);
-                }}
-              >
-                {item.clip.transitionIn?.type && item.clip.transitionIn.type !== 'none' ? null : <span>+</span>}
-              </button>
-            ) : null)}
-          </TrackRow>
-
-          <TrackRow label="A" name="Ligado" type="audio" hint="Áudio ligado" dragOverTrack={dragOverTrack} dropProps={dropProps} trackKey="linked" onPointerDown={panTimeline} empty={!layout.some((item) => isLinked(item.clip))}>
-            {layout.filter((item) => isLinked(item.clip)).map((item) => (
-              <div
-                key={`a-${item.clip.id}`}
-                className={`clip audio linked ${selection?.track === 'video' && selection.id === item.clip.id ? 'selected' : ''} ${movingId === item.clip.id ? 'moving' : ''}`}
-                style={{ left: item.start * pps, width: Math.max(14, (item.end - item.start) * pps), transform: movingId === item.clip.id && dragDx ? `translateX(${dragDx}px)` : undefined }}
-                onPointerDown={(event) => interactClip(event, 'video', item.clip, 'move')}
-                title="Áudio ligado ao vídeo"
-              >
-                <Waveform media={mediaById[item.clip.mediaId]} clipIn={item.clip.in} clipOut={item.clip.out} width={Math.max(14, (item.end - item.start) * pps)} />
-                <span className="clip-label">Áudio ligado</span>
-              </div>
-            ))}
-          </TrackRow>
-
-          <TrackRow label="♪" name="Áudio" type="audio" hint="Áudio" dragOverTrack={dragOverTrack} dropProps={dropProps} trackKey="audio" onPointerDown={panTimeline} enabled empty={!project.audioClips.length}>
-            {project.audioClips.map((clip) => (
-              <Clip key={clip.id} pps={pps} selection={selection} track="audio" clip={clip} start={clip.start} length={clipLength(clip)} media={mediaById[clip.mediaId]} label={mediaById[clip.mediaId]?.name ?? 'Áudio'} moving={movingId === clip.id} onDown={(event, mode) => interactClip(event, 'audio', clip, mode)} />
-            ))}
-          </TrackRow>
+          {shown.text && (shown.textRows || [{ lane: 0, clips: project.textClips }]).map((row, index) => (
+            <TrackRow
+              key={`text-${row.lane}`}
+              label={index === 0 ? 'T' : `T${index + 1}`}
+              name="Texto"
+              type="text"
+              hint="Texto"
+              dragOverTrack={dragOverTrack}
+              dropProps={dropProps}
+              trackKey={index === 0 ? 'text' : `text-${row.lane}`}
+              onPointerDown={panTimeline}
+              onPan={panTimeline}
+              empty={!row.clips.length}
+            >
+              {row.clips.map((clip) => (
+                <Clip key={clip.id} pps={pps} selection={selection} track="text" clip={clip} start={clip.start} length={clip.duration} label={clip.text || 'Texto'} moving={movingId === clip.id} onDown={(event, mode) => interactClip(event, 'text', clip, mode)} />
+              ))}
+            </TrackRow>
+          ))}
 
           <div className={`playhead ${scrubbing ? 'hot' : ''}`} style={{ left: head + time * pps }}>
+            <div className="playhead-hit" aria-hidden="true" onPointerDown={scrubFromLine} />
             <div role="slider" tabIndex={-1} className="playhead-handle" aria-label="Arrastar a agulha do tempo" aria-valuemin={0} aria-valuemax={Math.max(0, Math.round((duration || 0) * 100))} aria-valuenow={Math.max(0, Math.round(time * 100))} title="Arraste para percorrer o vídeo" onPointerDown={scrub} />
           </div>
         </div>
@@ -605,10 +755,10 @@ export default function Timeline({ project, time, duration, playing, selection, 
   );
 }
 
-function TrackRow({ label, name, type, hint, children, dragOverTrack, dropProps, onPointerDown, enabled = false, empty = false, trackKey }) {
+function TrackRow({ label, name, type, hint, children, dragOverTrack, dropProps, onPointerDown, onPan = null, enabled = false, empty = false, trackKey }) {
   return (
     <div className={`tl-row track-row ${type}-row ${type === 'video' ? 'main' : ''} ${type === 'audio' && trackKey === 'linked' ? 'linked-audio' : ''}`}>
-      <div className={`tl-head track-head ${enabled ? 'drop-enabled' : ''}`} title={hint}><span>{label}</span>{name && <small className="tl-name">{name}</small>}</div>
+      <div className={`tl-head track-head ${enabled ? 'drop-enabled' : ''}`} title={hint} onPointerDown={onPan}><span>{label}</span>{name && <small className="tl-name">{name}</small>}</div>
       <div data-track={trackKey} className={`tl-lane track-lane ${enabled ? 'drop-enabled' : ''} ${dragOverTrack === trackKey ? 'drag-over' : ''}`} onPointerDown={onPointerDown} {...dropProps(trackKey)}>
         {children}
         {empty && <div className="lane-hint">{hint}</div>}
@@ -617,13 +767,13 @@ function TrackRow({ label, name, type, hint, children, dragOverTrack, dropProps,
   );
 }
 
-function Clip({ pps, selection, track, clip, start, length, label, media, onDown, moving = false, dragDx = 0 }) {
+function Clip({ pps, selection, track, clip, start, length, label, media, onDown, moving = false, dragDx = 0, compact = false }) {
   const selected = selection && selection.track === track && selection.id === clip.id;
   const hasFx = clip.effects?.length || clip.audioEffects?.length || clip.chroma?.enabled;
   const width = Math.max(14, length * pps);
   return (
     <div className={`clip ${track} ${selected ? 'selected' : ''} ${moving ? 'moving' : ''}`} style={{ left: start * pps, width, transform: moving && dragDx ? `translateX(${dragDx}px)` : undefined }} onPointerDown={(event) => onDown(event, 'move')} title={`${label} · ${formatTime(length)}`}>
-      {media?.type === 'video' && track !== 'audio' ? <Filmstrip media={media} clipIn={clip.in} clipOut={clip.out} width={width} /> : null}
+      {media?.type === 'video' && track !== 'audio' ? <Filmstrip media={media} clipIn={clip.in} clipOut={clip.out} width={width} compact={compact} /> : null}
       {media?.type === 'image' ? <img className="clip-image" src={toFileUrl(media.path)} alt="" draggable={false} /> : null}
       {track === 'audio' ? <Waveform media={media} clipIn={clip.in} clipOut={clip.out} width={width} /> : null}
       <div className="handle left" title="Cortar o início" onPointerDown={(event) => { event.preventDefault(); event.stopPropagation(); onDown(event, 'left'); }} />
@@ -653,16 +803,16 @@ function Waveform({ media, clipIn, clipOut, width }) {
   return <canvas className="clip-wave" ref={canvasRef} aria-hidden="true" />;
 }
 
-function Filmstrip({ media, clipIn, clipOut, width }) {
+function Filmstrip({ media, clipIn, clipOut, width, compact = false }) {
   const [bundle, setBundle] = useState(null);
   useEffect(() => {
     let live = true;
-    captureMediaFrames(media).then((next) => { if (live) setBundle(next); });
+    captureMediaFrames(media, { compact }).then((next) => { if (live) setBundle(next); });
     return () => { live = false; };
-  }, [media?.id]);
+  }, [media?.id, compact]);
 
-  const thumbW = 56;
-  const count = Math.max(1, Math.ceil(width / thumbW));
+  const thumbW = compact ? 72 : 56;
+  const count = filmstripTileCount(width, thumbW, { compact });
   const images = [];
   for (let i = 0; i < count; i += 1) {
     const t = clipIn + ((i + 0.4) / count) * Math.max(0.01, clipOut - clipIn);
@@ -671,8 +821,20 @@ function Filmstrip({ media, clipIn, clipOut, width }) {
 
   return (
     <div className="filmstrip" aria-hidden="true">
-      {images.map((src, index) => (src ? <img key={index} src={src} alt="" draggable={false} /> : <div key={index} className="filmstrip-ph" />))}
+      {images.map((src, index) => (src
+        ? <img key={index} src={src} alt="" draggable={false} />
+        : <div key={index} className="filmstrip-ph" />))}
     </div>
+  );
+}
+
+function ScissorsIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+      <circle cx="6" cy="7" r="2.4" fill="none" stroke="currentColor" strokeWidth="1.8" />
+      <circle cx="6" cy="17" r="2.4" fill="none" stroke="currentColor" strokeWidth="1.8" />
+      <path d="M8.4 8.4 20 20M8.4 15.6 20 4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+    </svg>
   );
 }
 

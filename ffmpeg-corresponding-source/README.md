@@ -55,7 +55,7 @@ Local prepared path (not in git):
 
 GPLv2 for this beta: keep this tree in the public **PixelCut** repository
 **and** attach the zip to the same GitHub Release as
-`PixelCut-Setup-0.1.0-beta.1.exe`. Uploading only the EXE would leave the
+`PixelCut-Setup-0.1.0-beta.4.exe`. Uploading only the EXE would leave the
 corresponding source unavailable to the recipient.
 
 Previous zips `D581603E…` (42 314 247 bytes) and `E06BD9FE…` (42 319 366 bytes)

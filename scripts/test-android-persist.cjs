@@ -115,6 +115,76 @@ function projectWith(mediaExtra = {}, clips = [{ id: 'v1', mediaId: 'm1', in: 0,
   await restart.saveProject({ id: created.document.id, project: mediaPath.persistableProject(trimmed), playhead: 0.5 });
   const afterTrim = await repoMod.createProjectRepository(fs).loadProject(created.document.id);
   check('a second save after trim survives another restart', afterTrim.project.videoClips[0].in === 0.5 && afterTrim.project.videoClips[0].out === 3.5 && afterTrim.project.media[0].source === PRIVATE);
+  check('same-millisecond backup does not replace a later edit', afterTrim.playhead === 0.5);
+
+  let edited = { past: [], present: JSON.parse(JSON.stringify(afterTrim.project)), future: [] };
+  const firstId = edited.present.videoClips[0].id;
+  edited = storeMod.historyReducer(edited, { type: 'split', track: 'video', id: firstId, t: 1.2, newId: 'cut-b' });
+  edited = storeMod.historyReducer(edited, { type: 'split', track: 'video', id: 'cut-b', t: 2.0, newId: 'cut-c' });
+  edited = storeMod.historyReducer(edited, { type: 'split', track: 'video', id: 'cut-c', t: 2.6, newId: 'cut-d' });
+  check('three playhead cuts produce four packed clips', edited.present.videoClips.length === 4);
+  edited = storeMod.historyReducer(edited, { type: 'setTransition', id: 'cut-b', transition: { type: 'dissolve', duration: 0.4 } });
+  edited = storeMod.historyReducer(edited, { type: 'setTransition', id: 'cut-c', transition: { type: 'wipeleft', duration: 0.3 } });
+  edited = storeMod.historyReducer(edited, { type: 'setTransition', id: 'cut-d', transition: { type: 'fadeblack', duration: 0.35 } });
+  edited = storeMod.historyReducer(edited, { type: 'addText', clipId: 'tx1', at: 0.2, preset: { text: 'Título', duration: 3 } });
+  edited = storeMod.historyReducer(edited, { type: 'addText', clipId: 'tx2', at: 0.2, preset: { text: 'Sub', duration: 3 } });
+  edited = storeMod.historyReducer(edited, { type: 'addText', clipId: 'tx3', at: 0.2, preset: { text: 'Legenda', duration: 3 } });
+  check('overlapping titles land on distinct lanes', new Set(edited.present.textClips.map((clip) => clip.lane || 0)).size === 3);
+  await restart.saveProject({ id: created.document.id, project: mediaPath.persistableProject(edited.present), playhead: 2.05 });
+  const afterCuts = await repoMod.createProjectRepository(fs).loadProject(created.document.id);
+  check('saved cuts survive a new repository', afterCuts.project.videoClips.length === 4 && afterCuts.project.videoClips.map((clip) => clip.out).join() === edited.present.videoClips.map((clip) => clip.out).join());
+  check('saved transitions survive a new repository', afterCuts.project.videoClips[1].transitionIn?.type === 'dissolve' && afterCuts.project.videoClips[2].transitionIn?.type === 'wipeleft' && afterCuts.project.videoClips[3].transitionIn?.type === 'fadeblack');
+  check('each cut stores its own transition type', new Set(afterCuts.project.videoClips.map((clip) => clip.transitionIn?.type).filter(Boolean)).size === 3);
+  check('saved text lanes survive a new repository', afterCuts.project.textClips.map((clip) => clip.lane).join() === '0,1,2');
+  check('saved playhead survives with the cuts', afterCuts.playhead === 2.05);
+  check('document revision advances past the trim save', (afterCuts.revision || 0) > (afterTrim.revision || 0));
+
+  const thumbBytes = Uint8Array.from({ length: 16 }, (_, i) => i);
+  const staleThumb = JSON.parse(JSON.stringify(afterTrim));
+  staleThumb.thumbMediaId = 'old-poster';
+  const jpeg = schema.encodeDataUrl(thumbBytes);
+  const first = restart.saveProject({ id: created.document.id, project: mediaPath.persistableProject(edited.present), playhead: 2.05 });
+  const second = restart.saveThumbnail(created.document.id, jpeg, 'old-poster');
+  await Promise.all([first, second]);
+  const afterThumb = await repoMod.createProjectRepository(fs).loadProject(created.document.id);
+  check('thumbnail write does not restore an uncut timeline', afterThumb.project.videoClips.length === 4 && afterThumb.project.textClips.length === 3);
+
+  let liveProject = projectWith();
+  const liveSave = autosaveMod.createAutosave({
+    delay: 0,
+    save: async (payload) => {
+      const current = typeof payload === 'function' ? payload() : payload;
+      const live = { ...current, project: liveProject, playhead: 2.05 };
+      await restart.saveProject({ id: created.document.id, project: mediaPath.persistableProject(live.project), playhead: live.playhead });
+    },
+  });
+  liveSave.schedule({ id: created.document.id, project: liveProject, playhead: 0 }, 'stale');
+  liveProject = edited.present;
+  await liveSave.flush();
+  const afterLive = await repoMod.createProjectRepository(fs).loadProject(created.document.id);
+  check('autosave that started stale still writes the live timeline', afterLive.project.videoClips.length === 4);
+
+  const backupOnly = memory.createMemoryStore();
+  const backupRepo = repoMod.createProjectRepository(backupOnly);
+  const seeded = await backupRepo.createProject({ name: 'Rev' });
+  await backupRepo.saveProject({ id: seeded.document.id, project: mediaPath.persistableProject(projectWith()), playhead: 0 });
+  const uncut = await backupRepo.loadProject(seeded.document.id);
+  const cutDoc = schema.wrapProject(mediaPath.persistableProject(edited.present), {
+    id: seeded.document.id,
+    updatedAt: 1,
+    revision: 9,
+    playhead: 2.05,
+  });
+  const oldDoc = schema.wrapProject(uncut.project, {
+    id: seeded.document.id,
+    updatedAt: Date.now() + 5000,
+    revision: 2,
+    playhead: 0,
+  });
+  await backupOnly.writeText(`${seeded.document.id}/project.json`, schema.serializeDocument(oldDoc));
+  await backupOnly.writeText(`${seeded.document.id}/backup.json`, schema.serializeDocument(cutDoc));
+  const recoveredCuts = await repoMod.createProjectRepository(backupOnly).loadProject(seeded.document.id);
+  check('a higher revision wins over a newer timestamp on the uncut backup', recoveredCuts.project.videoClips.length === 4);
 
   check('refusing to empty a valid project', mediaPath.wouldEmptyOverwrite(afterTrim.project, storeMod.emptyProject()) === true);
 

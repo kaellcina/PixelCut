@@ -1,6 +1,6 @@
 appId: com.pixelcut.editor
 productName: PixelCut
-artifactName: ${productName}-Setup-${version}-beta.1.${ext}
+artifactName: ${productName}-Setup-${version}.${ext}
 directories:
   buildResources: assets
   output: release

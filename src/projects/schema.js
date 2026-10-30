@@ -1,5 +1,6 @@
 import { mediaOwnedPath } from '../platform/mediaPath.js';
 import { emptyProject, projectDuration, uid } from '../store.js';
+import { packedTextClips } from '../textLanes.js';
 
 export const PROJECT_SCHEMA = 1;
 export const INDEX_NAME = 'index.json';
@@ -25,7 +26,7 @@ function asProject(raw) {
     media: Array.isArray(raw.media) ? raw.media : [],
     videoClips: Array.isArray(raw.videoClips) ? raw.videoClips : [],
     overlayClips: Array.isArray(raw.overlayClips) ? raw.overlayClips : [],
-    textClips: Array.isArray(raw.textClips) ? raw.textClips : [],
+    textClips: packedTextClips(Array.isArray(raw.textClips) ? raw.textClips : []),
     audioClips: Array.isArray(raw.audioClips) ? raw.audioClips : [],
     name: String(raw.name || base.name),
     width: Number(raw.width) > 0 ? Number(raw.width) : base.width,
@@ -43,6 +44,7 @@ export function wrapProject(project, extra = {}) {
     createdAt: Number.isFinite(extra.createdAt) ? extra.createdAt : now,
     updatedAt: Number.isFinite(extra.updatedAt) ? extra.updatedAt : now,
     playhead: Number.isFinite(extra.playhead) ? Math.max(0, extra.playhead) : 0,
+    revision: Number.isFinite(extra.revision) ? Math.max(0, extra.revision) : 0,
     thumbMediaId: extra.thumbMediaId || null,
     project: current,
   };
@@ -59,6 +61,7 @@ export function migrateDocument(raw, extra = {}) {
       createdAt: Number.isFinite(parsed.createdAt) ? parsed.createdAt : extra.now || Date.now(),
       updatedAt: Number.isFinite(parsed.updatedAt) ? parsed.updatedAt : extra.now || Date.now(),
       playhead: Number.isFinite(parsed.playhead) ? Math.max(0, parsed.playhead) : 0,
+      revision: Number.isFinite(parsed.revision) ? Math.max(0, parsed.revision) : 0,
       thumbMediaId: parsed.thumbMediaId || null,
       project: inner,
     };
@@ -108,6 +111,12 @@ export function persistentSnapshot(project, playhead = 0) {
 
 export function fingerprint(project, playhead = 0) {
   return JSON.stringify(persistentSnapshot(project, playhead));
+}
+
+export function timelineFingerprint(project) {
+  const snap = persistentSnapshot(project, 0);
+  delete snap.playhead;
+  return JSON.stringify(snap);
 }
 
 export function firstVisualMedia(project) {

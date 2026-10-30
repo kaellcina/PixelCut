@@ -15,6 +15,7 @@ import {
   projectDuration,
   exportDuration,
 } from '../shared/timeline-duration.cjs';
+import { firstFreeTextLane } from './textLanes.js';
 
 export const uid = () => Math.random().toString(36).slice(2, 10);
 
@@ -34,6 +35,62 @@ export function emptyProject() {
   return { name: 'Projeto sem título', width: 1280, height: 720, fps: 30, media: [], videoClips: [], overlayClips: [], textClips: [], audioClips: [] };
 }
 
+function mainVideoClip(id, media) {
+  const duration = Math.max(MIN_CLIP, Number(media.duration) || (media.type === 'image' ? 5 : 1));
+  return {
+    id,
+    mediaId: media.id,
+    in: 0,
+    out: duration,
+    volume: 1,
+    muted: media.type !== 'video',
+    linkedAudio: media.type === 'video',
+    effects: [],
+    effectParams: {},
+    audioEffects: [],
+    speed: 1,
+    chroma: { enabled: false, color: '#00ff00', similarity: 0.32 },
+  };
+}
+
+export function buildProjectFromImportedMedia(items, base = emptyProject()) {
+  const media = [];
+  const videoClips = [];
+  const audioClips = [];
+  for (const raw of items || []) {
+    if (!raw || raw.error) continue;
+    const item = { ...raw, id: raw.id || uid() };
+    media.push(item);
+    const clipId = uid();
+    if (item.type === 'audio') {
+      audioClips.push({
+        id: clipId,
+        mediaId: item.id,
+        start: audioClips.reduce((sum, clip) => sum + Math.max(0, (clip.out || 0) - (clip.in || 0)), 0),
+        in: 0,
+        out: Number(item.duration) || 1,
+        volume: 1,
+        effects: [],
+        fadeIn: 0,
+        fadeOut: 0,
+        speed: 1,
+      });
+    } else if (item.type === 'video' || item.type === 'image') {
+      videoClips.push(mainVideoClip(clipId, item));
+    }
+  }
+  const firstName = media[0]?.name ? String(media[0].name).replace(/\.[^.]+$/, '') : '';
+  return {
+    ...base,
+    name: firstName || base.name,
+    media,
+    videoClips,
+    overlayClips: [],
+    textClips: [],
+    audioClips,
+  };
+}
+
 export function defaultTextClip(id, at, preset = {}) {
   return {
     id,
@@ -51,6 +108,7 @@ export function defaultTextClip(id, at, preset = {}) {
     animationDuration: preset.animationDuration ?? 0.45,
     letterEffect: preset.letterEffect || 'outline',
     layer: preset.layer || 'front',
+    lane: Number.isFinite(preset.lane) ? preset.lane : 0,
     strokeColor: '#000000',
     strokeWidth: 2,
     shadowColor: '#000000',
@@ -89,13 +147,56 @@ export function videoInsertIndex(clips, movingId, time) {
   return others.filter((item) => (item.start + item.end) / 2 < at).length;
 }
 
+export function videoClipsAt(p, t) {
+  const layout = videoLayout(p.videoClips);
+  if (!layout.length) return [];
+  const hits = layout.filter((l) => t >= l.start && t < l.end);
+  if (hits.length) return hits;
+  const last = layout[layout.length - 1];
+  if (t >= last.end - 1e-4) return [last];
+  return [];
+}
+
 export function videoClipAt(p, t) {
-  const hits = videoLayout(p.videoClips).filter((l) => t >= l.start && t < l.end);
+  const hits = videoClipsAt(p, t);
   return hits[hits.length - 1] || hits[0] || null;
 }
 
-export function videoClipsAt(p, t) {
-  return videoLayout(p.videoClips).filter((l) => t >= l.start && t < l.end);
+export function sourcePreviewTime(clip, timelineTime, layerStart, fps = 30) {
+  if (!clip) return 0;
+  const start = Number(clip.in) || 0;
+  const raw = start + (timelineTime - (layerStart || 0)) * clipSpeed(clip);
+  const pad = 1 / Math.max(12, Number(fps) || 30);
+  const out = Number.isFinite(clip.out) ? clip.out : raw + pad;
+  const span = Math.max(0, out - start);
+  const edge = span > pad * 2 ? Math.min(pad, span / 4) : 0;
+  const lo = start + edge;
+  const hi = Math.max(lo, out - edge);
+  return Math.min(Math.max(raw, lo), hi);
+}
+
+// A hard cut (no overlap) at t === next.start maps only to the incoming clip, whose
+// decoder often shows black at exact `in`. Prefer the last safe frame of the outgoing clip.
+export function nudgePreviewTime(p, t) {
+  const layout = videoLayout(p?.videoClips);
+  if (!layout.length || !Number.isFinite(t)) return t;
+  const pad = 1 / Math.max(12, Number(p?.fps) || 30);
+  for (let i = 1; i < layout.length; i += 1) {
+    const item = layout[i];
+    if (item.overlap > 0.02) continue;
+    if (Math.abs(t - item.start) <= pad) {
+      const before = item.start - pad;
+      return before >= layout[i - 1].start ? Math.max(0, before) : Math.min(item.end - pad, item.start + pad);
+    }
+  }
+  return t;
+}
+
+export function transitionApplyId(project, selection, time) {
+  if (selection?.track === 'transition' && (project.videoClips || []).some((clip) => clip.id === selection.id)) {
+    return selection.id;
+  }
+  return nearestVideoCut(project, time)?.clip.id || null;
 }
 
 export function nearestVideoCut(p, t) {
@@ -139,17 +240,13 @@ function reduceProject(p, a) {
     case 'addToTimeline': {
       const m = p.media.find((x) => x.id === a.mediaId);
       if (!m) return p;
-      if (m.type === 'image' || a.track === 'overlay') {
+      if ((m.type === 'image' || a.track === 'overlay') && a.track !== 'video') {
         const lane = a.lane ?? 0;
         return { ...p, overlayClips: [...(p.overlayClips || []), defaultOverlayClip(a.clipId, m, a.at ?? 0, lane)] };
       }
-      if (m.type === 'video') {
+      if (m.type === 'video' || a.track === 'video') {
         const clips = [...p.videoClips];
-        const clip = {
-          id: a.clipId, mediaId: m.id, in: 0, out: m.duration, volume: 1, muted: false, linkedAudio: true,
-          effects: [], effectParams: {}, audioEffects: [], speed: 1,
-          chroma: { enabled: false, color: '#00ff00', similarity: 0.32 },
-        };
+        const clip = mainVideoClip(a.clipId, m);
         const index = Number.isInteger(a.toIndex) ? Math.max(0, Math.min(a.toIndex, clips.length)) : clips.length;
         clips.splice(index, 0, clip);
         return { ...p, videoClips: clips };
@@ -246,8 +343,18 @@ function reduceProject(p, a) {
         audioClips: [...p.audioClips, audioClip],
       };
     }
-    case 'addText':
-      return { ...p, textClips: [...p.textClips, defaultTextClip(a.clipId, a.at, a.preset)] };
+    case 'setName': {
+      const name = String(a.name ?? '').trim() || p.name;
+      if (name === p.name) return p;
+      return { ...p, name };
+    }
+    case 'addText': {
+      const preset = { ...(a.preset || {}) };
+      if (!Number.isFinite(preset.lane)) {
+        preset.lane = firstFreeTextLane(p.textClips, a.at, preset.duration || 3);
+      }
+      return { ...p, textClips: [...p.textClips, defaultTextClip(a.clipId, a.at, preset)] };
+    }
     case 'toggleEffect': {
       const key = a.track === 'overlay' ? 'overlayClips' : 'videoClips';
       return {
@@ -385,6 +492,7 @@ export function historyReducer(state, a) {
   const next = reduceProject(state.present, a);
   if (next === state.present) return state;
   if (a.type === 'load') return { past: [], present: next, future: [] };
+  if (a.type === 'setName') return { ...state, present: next };
   if (a.transient || state.gestureStart) return { ...state, present: next };
   return { past: [...state.past, state.present].slice(-100), present: next, future: [] };
 }

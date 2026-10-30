@@ -51,6 +51,11 @@ export async function captureProjectThumb(project) {
         });
       }
       ctx.drawImage(video, 0, 0, width, height);
+      try {
+        video.pause();
+        video.removeAttribute('src');
+        video.load();
+      } catch { /* decoder must not stay pinned after the jpeg is ready */ }
     }
   } catch {
     return null;

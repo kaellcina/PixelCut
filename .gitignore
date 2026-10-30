@@ -42,6 +42,7 @@ Thumbs.db
 .tmp-*/
 tmp/
 smoke-out/
+docs/backup-projetos-win-*/
 
 # Signing leftovers if they ever land in the tree
 *.dpapi

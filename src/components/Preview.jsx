@@ -1,11 +1,13 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createPlaybackSession } from '../playback.js';
-import { clipLength, clipSpeed, formatTime, parseTime, toFileUrl, videoClipsAt } from '../store.js';
+import { clipLength, clipSpeed, formatTime, nudgePreviewTime, parseTime, sourcePreviewTime, toFileUrl, videoClipsAt } from '../store.js';
 import { ASPECTS, aspectOf, chromaMatte, composeVideoStyle, fontById, hexToRgb } from '../catalog.js';
 import { clipZoom, layerStyle, letterStyle, overlayMotion, textMotion, transitionMix } from '../motion.js';
 import { applyAudioEffects, envelopeVolume, unlockAudio } from '../audioFx.js';
 import { mainTrackAudio } from '../previewAudio.js';
 import { snapPosition } from '../snap.js';
+import { createSeekQueue } from '../mediaSeek.js';
+import { createAudioScrubber } from '../audioScrub.js';
 
 const DRIFT = 0.25;
 
@@ -53,14 +55,18 @@ export function TimeField({ time, duration, onCommit }) {
   );
 }
 
-function syncMedia(element, url, localTime, playing, volume, rate = 1) {
+function syncMedia(element, url, localTime, playing, volume, rate = 1, seekQueue = null, holdPlay = false) {
   if (!element) return;
   if (element.dataset.src !== url) {
     element.dataset.src = url;
     element.src = url;
     element.load();
+    seekQueue?.reset?.();
     element.addEventListener('loadedmetadata', () => {
-      try { element.currentTime = Math.max(0, localTime); } catch { /* Media metadata may not be seekable yet. */ }
+      if (seekQueue && !playing) seekQueue.request(Math.max(0, localTime));
+      else {
+        try { element.currentTime = Math.max(0, localTime); } catch { /* Media metadata may not be seekable yet. */ }
+      }
     }, { once: true });
   }
   element.volume = Math.max(0, Math.min(1, volume));
@@ -69,10 +75,13 @@ function syncMedia(element, url, localTime, playing, volume, rate = 1) {
     element.playbackRate = Math.max(0.1, Math.min(4, rate));
   } catch { /* Some media elements ignore playbackRate until ready. */ }
   if (element.readyState >= 1 && Math.abs(element.currentTime - localTime) > (playing ? DRIFT : 0.015)) {
-    try { element.currentTime = localTime; } catch { /* Wait for metadata. */ }
+    if (seekQueue && !playing) seekQueue.request(localTime);
+    else {
+      try { element.currentTime = localTime; } catch { /* Wait for metadata. */ }
+    }
   }
   if (playing && element.paused) element.play().catch(() => {});
-  if (!playing && !element.paused) element.pause();
+  if (!playing && !holdPlay && !element.paused) element.pause();
 }
 
 function drawChroma(canvas, source, color, similarity) {
@@ -125,7 +134,7 @@ function TextLayer({ item, time, stageSize, project, selected, onPointerDown }) 
   );
 }
 
-export default function Preview({ project, time, seekVer, playing, duration, onTime, onEnd, onTogglePlay, onSeek, dispatch, selection, onSelect, emptyDetail = 'Depois arraste-o para a área da timeline, abaixo.' }) {
+export default function Preview({ project, time, seekVer, playing, duration, onTime, onEnd, onTogglePlay, onSeek, dispatch, selection, onSelect, emptyDetail = 'Depois arraste-o para a área da timeline, abaixo.', scrubbing = false, audioScrub = true, onToggleAudioScrub = null }) {
   const stageRef = useRef(null);
   const [guides, setGuides] = useState(NO_GUIDES);
   const videoARef = useRef(null);
@@ -140,6 +149,9 @@ export default function Preview({ project, time, seekVer, playing, duration, onT
   const [videoError, setVideoError] = useState(false);
   const mediaById = Object.fromEntries(project.media.map((item) => [item.id, item]));
   const playback = useRef(createPlaybackSession());
+  const seekA = useRef(createSeekQueue());
+  const seekB = useRef(createSeekQueue());
+  const audioScrubber = useRef(createAudioScrubber());
   const playbackRaf = useRef(0);
   const timeRef = useRef(time);
   const playingRef = useRef(playing);
@@ -149,7 +161,8 @@ export default function Preview({ project, time, seekVer, playing, duration, onT
   durationRef.current = duration;
 
   const apply = (targetTime, isPlaying) => {
-    const layers = videoClipsAt(project, targetTime);
+    const previewAt = nudgePreviewTime(project, targetTime);
+    const layers = videoClipsAt(project, previewAt);
     const mediaA = layers[0] && mediaById[layers[0].clip.mediaId];
     const mediaB = layers[1] && mediaById[layers[1].clip.mediaId];
     const videoA = videoARef.current;
@@ -157,18 +170,23 @@ export default function Preview({ project, time, seekVer, playing, duration, onT
     const audio = mainTrackAudio(project, targetTime);
     applyAudioEffects(videoA, audio.a.effects, audio.a.key);
     applyAudioEffects(videoB, audio.b.effects, audio.b.key);
+    const incoming = layers[1];
+    const progress = incoming && incoming.overlap > 0
+      ? Math.max(0, Math.min(1, (previewAt - incoming.start) / incoming.overlap))
+      : null;
+    const showB = !!(mediaB && (isPlaying || (progress != null && progress > 0.04 && progress < 0.96)));
 
     if (mediaA) {
       const clip = layers[0].clip;
       const url = toFileUrl(mediaA.path);
       if (videoA.dataset.src !== url) { setVideoReady(false); setVideoError(false); }
-      syncMedia(videoA, url, audio.a.localTime, isPlaying, audio.a.volume, clipSpeed(clip));
+      syncMedia(videoA, url, audio.a.localTime, isPlaying, audio.a.volume, clipSpeed(clip), seekA.current, scrubbing && audioScrub);
       if (clip.chroma?.enabled) drawChroma(chromaRef.current, videoA, clip.chroma.color, clip.chroma.similarity);
     } else if (videoA && !videoA.paused) videoA.pause();
 
-    if (mediaB) {
+    if (showB) {
       const clip = layers[1].clip;
-      syncMedia(videoB, toFileUrl(mediaB.path), audio.b.localTime, isPlaying, audio.b.volume, clipSpeed(clip));
+      syncMedia(videoB, toFileUrl(mediaB.path), audio.b.localTime, isPlaying, audio.b.volume, clipSpeed(clip), seekB.current, false);
     } else if (videoB?.dataset.src) {
       if (!videoB.paused) videoB.pause();
       videoB.removeAttribute('src');
@@ -182,7 +200,7 @@ export default function Preview({ project, time, seekVer, playing, duration, onT
       const length = clipLength(clip);
       const active = targetTime >= clip.start && targetTime < clip.start + length;
       if (media.type !== 'image') {
-        if (active) syncMedia(element, toFileUrl(media.path), clip.in + (targetTime - clip.start) * clipSpeed(clip), isPlaying, clip.muted ? 0 : clip.volume ?? 0, clipSpeed(clip));
+        if (active) syncMedia(element, toFileUrl(media.path), sourcePreviewTime(clip, targetTime, clip.start, project.fps), isPlaying, clip.muted ? 0 : clip.volume ?? 0, clipSpeed(clip));
         else if (!element.paused) element.pause();
       }
       const canvas = overlayChroma.current[clip.id];
@@ -210,8 +228,38 @@ export default function Preview({ project, time, seekVer, playing, duration, onT
   onEndRef.current = onEnd;
 
   useEffect(() => {
-    if (!playing) applyRef.current(timeRef.current, false);
+    seekA.current.attach(videoARef.current);
+    seekB.current.attach(videoBRef.current);
   });
+
+  useEffect(() => {
+    if (playing) {
+      audioScrubber.current.stop();
+      return undefined;
+    }
+    applyRef.current(time, false);
+    return undefined;
+  }, [playing, time, project, seekVer]);
+
+  useEffect(() => {
+    if (playing || !scrubbing || !audioScrub) {
+      audioScrubber.current.stop();
+      return undefined;
+    }
+    const audio = mainTrackAudio(project, time);
+    const clip = videoClipsAt(project, nudgePreviewTime(project, time))[0]?.clip;
+    audioScrubber.current.move({
+      mediaEl: videoARef.current,
+      timelineTime: time,
+      volume: audio.a.volume,
+      muted: !clip || clip.muted || clip.linkedAudio === false,
+      playing: false,
+      enabled: audioScrub,
+    });
+    return undefined;
+  }, [audioScrub, playing, project, scrubbing, time]);
+
+  useEffect(() => () => audioScrubber.current.stop(), []);
 
   useEffect(() => {
     if (!playing) {
@@ -264,7 +312,7 @@ export default function Preview({ project, time, seekVer, playing, duration, onT
     return () => observer.disconnect();
   }, [project.width, project.height]);
 
-  const layers = videoClipsAt(project, time);
+  const layers = videoClipsAt(project, nudgePreviewTime(project, time));
   const mainClip = layers[0]?.clip;
   const texts = project.textClips.filter((item) => time >= item.start && time < item.start + item.duration);
   const overlaysNow = (project.overlayClips || []).filter((clip) => time >= clip.start && time < clip.start + clipLength(clip));
@@ -493,6 +541,15 @@ export default function Preview({ project, time, seekVer, playing, duration, onT
         <button className="transport-icon" onClick={() => onSeek(duration)} title="Fim">⏭</button>
         <TimeField time={time} duration={duration} onCommit={onSeek} />
         <span className="tc dim">/ {formatTime(duration)}</span>
+        {onToggleAudioScrub && (
+          <button
+            type="button"
+            className={`transport-icon audio-scrub-toggle ${audioScrub ? 'on' : 'off'}`}
+            title={audioScrub ? 'Desligar som ao arrastar a agulha' : 'Ligar som ao arrastar a agulha'}
+            aria-pressed={audioScrub}
+            onClick={onToggleAudioScrub}
+          >{audioScrub ? '♪' : '♪̸'}</button>
+        )}
       </div>
     </section>
   );

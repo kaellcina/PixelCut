@@ -28,6 +28,7 @@ export default function HomeScreen({
   mobile,
   note,
   onNew,
+  onNewMedia,
   onOpenFile,
   onOpen,
   onRename,
@@ -72,7 +73,8 @@ export default function HomeScreen({
         </div>
         <div className="home-actions">
           <button className="header-button" onClick={onOpenFile}>Abrir</button>
-          <button className="primary" onClick={onNew}>Novo projeto</button>
+          {onNew ? <button className="header-button" onClick={onNew}>{mobile ? 'Em branco' : 'Projeto em branco'}</button> : null}
+          <button className="primary" onClick={onNewMedia || onNew}>{mobile ? 'Novo vídeo' : 'Novo com mídia'}</button>
         </div>
       </header>
 
@@ -82,7 +84,7 @@ export default function HomeScreen({
             <p className="home-kicker">Projetos</p>
             <h1>Recentes</h1>
           </div>
-          <button className="primary home-new" onClick={onNew}>Novo projeto</button>
+          <button className="primary home-new" onClick={onNewMedia || onNew}>{mobile ? 'Novo vídeo' : 'Novo com mídia'}</button>
         </div>
 
         {loading ? (
@@ -91,9 +93,12 @@ export default function HomeScreen({
           <div className="home-empty">
             <img src={pixelcutIcon} alt="" />
             <strong>Comece um projeto</strong>
-            <span>Crie um projeto novo ou abra um arquivo .json já exportado. Nada é criado automaticamente ao abrir o PixelCut.</span>
+            <span>{mobile
+              ? 'Toque em Novo vídeo para escolher fotos e vídeos. Se cancelar, nenhum projeto é criado.'
+              : 'Importe os arquivos primeiro. A timeline já recebe os clipes. Nada é criado se você cancelar a seleção.'}</span>
             <div className="home-empty-actions">
-              <button className="primary" onClick={onNew}>Novo projeto</button>
+              <button className="primary" onClick={onNewMedia || onNew}>{mobile ? 'Novo vídeo' : 'Novo com mídia'}</button>
+              {onNew ? <button className="secondary-button" onClick={onNew}>Projeto em branco</button> : null}
               <button className="secondary-button" onClick={onOpenFile}>Abrir existente</button>
             </div>
           </div>

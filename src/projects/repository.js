@@ -63,9 +63,20 @@ async function readCandidates(store, id) {
   return found;
 }
 
+function revisionOf(doc) {
+  return Number.isFinite(doc?.revision) ? doc.revision : 0;
+}
+
 function newestDocument(docs) {
   if (!docs.length) return null;
-  return docs.slice().sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0) || (b.playhead || 0) - (a.playhead || 0))[0];
+  return docs.reduce((best, doc) => {
+    if (!best) return doc;
+    const nextRev = revisionOf(doc);
+    const bestRev = revisionOf(best);
+    if (nextRev !== bestRev) return nextRev > bestRev ? doc : best;
+    if ((doc.updatedAt || 0) > (best.updatedAt || 0)) return doc;
+    return best;
+  }, null);
 }
 
 async function upsertSummary(store, summary) {
@@ -80,6 +91,13 @@ export function createProjectRepository(store) {
   if (!store || typeof store.writeAtomic !== 'function') {
     throw new Error('createProjectRepository requires an atomic store');
   }
+
+  let writeChain = Promise.resolve();
+  const withWriteLock = (work) => {
+    const run = writeChain.then(work, work);
+    writeChain = run.then(() => undefined, () => undefined);
+    return run;
+  };
 
   const repo = {
     async listProjects() {
@@ -124,28 +142,32 @@ export function createProjectRepository(store) {
     },
 
     async saveProject(input) {
-      const id = input.id;
-      if (!id) throw new Error('O projeto não tem identificador.');
-      const now = Number.isFinite(input.now) ? input.now : Date.now();
-      let previous = null;
-      try {
-        previous = await repo.loadProject(id);
-      } catch {
-        previous = null;
-      }
-      const doc = wrapProject(input.project, {
-        id,
-        now,
-        createdAt: previous?.createdAt || input.createdAt || now,
-        updatedAt: now,
-        playhead: input.playhead,
-        thumbMediaId: input.thumbMediaId != null ? input.thumbMediaId : previous?.thumbMediaId,
+      return withWriteLock(async () => {
+        const id = input.id;
+        if (!id) throw new Error('O projeto não tem identificador.');
+        const requested = Number.isFinite(input.now) ? input.now : Date.now();
+        let previous = null;
+        try {
+          previous = await repo.loadProject(id);
+        } catch {
+          previous = null;
+        }
+        const now = Math.max(requested, (previous?.updatedAt || 0) + 1);
+        const doc = wrapProject(input.project, {
+          id,
+          now,
+          createdAt: previous?.createdAt || input.createdAt || now,
+          updatedAt: now,
+          playhead: input.playhead,
+          revision: revisionOf(previous) + 1,
+          thumbMediaId: input.thumbMediaId != null ? input.thumbMediaId : previous?.thumbMediaId,
+        });
+        await store.writeAtomic(fileOf(id, PROJECT_FILE), serializeDocument(doc));
+        const hasThumb = await store.exists(fileOf(id, THUMB_FILE));
+        const summary = documentSummary(doc, { hasThumb, missingCount: input.missingCount || 0 });
+        await upsertSummary(store, summary);
+        return { document: doc, summary };
       });
-      await store.writeAtomic(fileOf(id, PROJECT_FILE), serializeDocument(doc));
-      const hasThumb = await store.exists(fileOf(id, THUMB_FILE));
-      const summary = documentSummary(doc, { hasThumb, missingCount: input.missingCount || 0 });
-      await upsertSummary(store, summary);
-      return { document: doc, summary };
     },
 
     async renameProject(id, name) {
@@ -205,10 +227,18 @@ export function createProjectRepository(store) {
       await store.writeBytes(fileOf(id, THUMB_FILE), decoded.bytes);
       if (thumbMediaId) {
         try {
-          const doc = await repo.loadProject(id);
-          doc.thumbMediaId = thumbMediaId;
-          await store.writeAtomic(fileOf(id, PROJECT_FILE), serializeDocument(doc));
-          await upsertSummary(store, documentSummary(doc, { hasThumb: true }));
+          await withWriteLock(async () => {
+            const doc = await repo.loadProject(id);
+            if (doc.thumbMediaId === thumbMediaId) {
+              await upsertSummary(store, documentSummary(doc, { hasThumb: true }));
+              return;
+            }
+            doc.thumbMediaId = thumbMediaId;
+            doc.revision = revisionOf(doc) + 1;
+            doc.updatedAt = Math.max(Date.now(), (doc.updatedAt || 0) + 1);
+            await store.writeAtomic(fileOf(id, PROJECT_FILE), serializeDocument(doc));
+            await upsertSummary(store, documentSummary(doc, { hasThumb: true }));
+          });
         } catch {
           // The jpeg is already stored; the next save will record thumbMediaId.
         }

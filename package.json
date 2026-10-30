@@ -1,6 +1,6 @@
 {
   "name": "pixelcut-video-editor",
-  "version": "0.1.0",
+  "version": "0.1.0-beta.4",
   "description": "PixelCut — free public-beta video editor for Windows (Electron + FFmpeg) and Android (Capacitor + Media3)",
   "author": "Kaell Soares Calacina",
   "main": "electron/main.cjs",
@@ -9,7 +9,7 @@
   "scripts": {
     "build": "vite build",
     "start": "npm run build && electron .",
-    "test:export": "node scripts/test-editor.cjs && node scripts/test-projects.cjs && node scripts/test-project-path.cjs && node scripts/test-android-persist.cjs && node scripts/test-ffprobe.cjs && node scripts/test-export.cjs && node scripts/test-export-duration.cjs",
+    "test:export": "node scripts/test-editor.cjs && node scripts/test-projects.cjs && node scripts/test-project-path.cjs && node scripts/test-android-persist.cjs && node scripts/test-stability.cjs && node scripts/test-ffprobe.cjs && node scripts/test-export.cjs && node scripts/test-export-duration.cjs",
     "test:android-persist": "node scripts/test-android-persist.cjs",
     "test:project-path": "node scripts/test-project-path.cjs",
     "test:electron": "node scripts/test-electron-boot.cjs",

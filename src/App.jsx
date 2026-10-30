@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { CLIP_MOTIONS } from './catalog.js';
 import { togglePlaybackState } from './playback.js';
-import { clampPlayhead, clipLength, emptyProject, historyReducer, nearestVideoCut, projectDuration, uid, videoClipAt, videoLayout } from './store.js';
+import { buildProjectFromImportedMedia, clampPlayhead, clipLength, emptyProject, historyReducer, projectDuration, transitionApplyId, uid, videoClipAt, videoLayout } from './store.js';
 import { audioChainInfo, audioLatency, unlockAudio, voiceSelfTest } from './audioFx.js';
 import { createAutosave } from './projects/autosave.js';
 import { fingerprint, firstVisualMedia } from './projects/schema.js';
@@ -14,6 +14,7 @@ import ExportDialog from './components/ExportDialog.jsx';
 import HomeScreen from './components/HomeScreen.jsx';
 import MissingMediaDialog from './components/MissingMediaDialog.jsx';
 import { platform, prefersMobileLayout } from './platform/index.js';
+import { readAudioScrubPref, writeAudioScrubPref } from './audioScrub.js';
 import pixelcutIcon from '../assets/icon.png';
 
 export default function App() {
@@ -38,6 +39,12 @@ export default function App() {
   const [thumbs, setThumbs] = useState({});
   const [saveInfo, setSaveInfo] = useState({ status: 'idle', savedAt: null, error: null });
   const [missing, setMissing] = useState([]);
+  const [scrubbing, setScrubbing] = useState(false);
+  const [cutToken, setCutToken] = useState(0);
+  const [audioScrub, setAudioScrub] = useState(() => (typeof window === 'undefined' ? true : readAudioScrubPref()));
+  const [nameEdit, setNameEdit] = useState(false);
+  const [nameDraft, setNameDraft] = useState('');
+  const transitionPickRef = useRef(null);
 
   useEffect(() => {
     const queries = ['(max-width: 860px)', '(max-height: 520px)', '(pointer: coarse)'].map((query) => window.matchMedia(query));
@@ -74,9 +81,17 @@ export default function App() {
   timeRef.current = time;
 
   const autosave = useMemo(() => createAutosave({
-    delay: platform.kind() === 'android' ? 250 : 700,
+    delay: platform.kind() === 'android' ? 500 : 700,
     save: async (payload) => {
-      await platform.persistProject(payload);
+      const live = payload && typeof payload === 'object'
+        ? {
+          ...payload,
+          id: sessionRef.current?.id || payload.id,
+          project: projectRef.current || payload.project,
+          playhead: timeRef.current,
+        }
+        : payload;
+      await platform.persistProject(live);
     },
   }), []);
 
@@ -107,20 +122,16 @@ export default function App() {
   useEffect(() => {
     if (!session?.id || session.ephemeral) return undefined;
     autosave.schedule(
-      { id: session.id, project, playhead: timeRef.current },
+      () => ({ id: sessionRef.current?.id, project: projectRef.current, playhead: timeRef.current }),
       fingerprint(project, timeRef.current),
     );
-    if (platform.kind() !== 'android') return undefined;
-    const timer = setTimeout(() => {
-      autosave.flush();
-    }, 0);
-    return () => clearTimeout(timer);
+    return undefined;
   }, [autosave, project, session]);
 
   useEffect(() => {
     if (!session?.id || session.ephemeral || playing) return undefined;
     autosave.schedule(
-      { id: session.id, project: projectRef.current, playhead: time },
+      () => ({ id: sessionRef.current?.id, project: projectRef.current, playhead: timeRef.current }),
       fingerprint(projectRef.current, time),
     );
     return undefined;
@@ -149,6 +160,9 @@ export default function App() {
     setMissing(missingItems || []);
     setDrawer(null);
     setMenuOpen(false);
+    setNameEdit(false);
+    setNameDraft(document.project?.name || '');
+    transitionPickRef.current = null;
   }, []);
 
   const createAndOpen = async () => {
@@ -156,6 +170,23 @@ export default function App() {
       const created = await platform.createProject({ name: 'Projeto sem título' });
       openDocument(created.document);
       announce('Projeto criado');
+    } catch (error) {
+      alert(error.message || 'Não foi possível criar o projeto.');
+    }
+  };
+
+  const createFromPicker = async () => {
+    try {
+      const items = await platform.importMedia();
+      if (!items?.length) return;
+      const ok = items.filter((item) => !item.error).map((item) => ({ ...item, id: uid() }));
+      const bad = items.filter((item) => item.error);
+      if (bad.length) alert('Não foi possível importar alguns arquivos:\n' + bad.map((item) => `${item.name}: ${item.error}`).join('\n'));
+      if (!ok.length) return;
+      const project = buildProjectFromImportedMedia(ok);
+      const created = await platform.createProject({ name: project.name, project });
+      openDocument(created.document);
+      announce(`${ok.length} arquivo(s) na timeline`);
     } catch (error) {
       alert(error.message || 'Não foi possível criar o projeto.');
     }
@@ -174,7 +205,7 @@ export default function App() {
   const flushSave = async () => {
     if (!sessionRef.current?.id || sessionRef.current.ephemeral) return { status: 'idle' };
     autosave.schedule(
-      { id: sessionRef.current.id, project: projectRef.current, playhead: timeRef.current },
+      () => ({ id: sessionRef.current.id, project: projectRef.current, playhead: timeRef.current }),
       fingerprint(projectRef.current, timeRef.current),
     );
     return autosave.flush();
@@ -235,8 +266,14 @@ export default function App() {
 
   const select = (next) => {
     setSelection(next);
+    if (next?.track === 'transition') {
+      transitionPickRef.current = next.id;
+      if (mobile) openCategory('transitions', { toggle: false });
+      return;
+    }
+    transitionPickRef.current = null;
     if (!next) return;
-    if (mobile && (next.track === 'text' || next.track === 'transition')) {
+    if (mobile && next.track === 'text') {
       setDrawer('inspector');
       setSheet('half');
       return;
@@ -244,9 +281,9 @@ export default function App() {
     if (compact && !mobile) setDrawer('inspector');
   };
 
-  const openCategory = (id) => {
+  const openCategory = (id, { toggle = true } = {}) => {
     setMenuOpen(false);
-    if (drawer === 'library' && libraryTab === id) {
+    if (toggle && drawer === 'library' && libraryTab === id) {
       setDrawer(null);
       return;
     }
@@ -262,6 +299,23 @@ export default function App() {
     if (bad.length) alert('Não foi possível importar alguns arquivos:\n' + bad.map((item) => `${item.name}: ${item.error}`).join('\n'));
     if (ok.length) {
       dispatch({ type: 'addMedia', items: ok });
+      const emptyTimeline = !project.videoClips.length
+        && !project.audioClips.length
+        && !(project.overlayClips || []).length
+        && !project.textClips.length;
+      if (emptyTimeline) {
+        ok.forEach((item) => {
+          dispatch({
+            type: 'addToTimeline',
+            mediaId: item.id,
+            clipId: uid(),
+            at: 0,
+            track: item.type === 'image' ? 'video' : undefined,
+          });
+        });
+        announce(`${ok.length} arquivo(s) na timeline`);
+        return;
+      }
       if (mobile) {
         setLibraryTab('media');
         setSheet('half');
@@ -374,17 +428,13 @@ export default function App() {
   };
 
   const applyTransition = (type, at = time) => {
-    if (selection?.track === 'transition') {
-      const current = project.videoClips.find((clip) => clip.id === selection.id);
-      dispatch({ type: 'setTransition', id: selection.id, transition: { type, duration: current?.transitionIn?.duration || 0.5 } });
-      announce('Transição só neste corte');
-      return;
-    }
-    const cut = nearestVideoCut(project, at);
-    if (!cut) return announce('Clique no ícone entre dois clipes');
-    dispatch({ type: 'setTransition', id: cut.clip.id, transition: { type, duration: cut.clip.transitionIn?.duration || 0.5 } });
-    select({ track: 'transition', id: cut.clip.id });
-    seek(cut.cut);
+    const chosen = selection?.track === 'transition' ? selection : null;
+    const id = transitionApplyId(project, chosen, at);
+    if (!id) return announce('Toque no losango entre dois clipes');
+    const current = project.videoClips.find((clip) => clip.id === id);
+    dispatch({ type: 'setTransition', id, transition: { type, duration: current?.transitionIn?.duration || 0.5 } });
+    transitionPickRef.current = id;
+    select({ track: 'transition', id });
     announce('Transição só neste corte');
   };
 
@@ -403,7 +453,11 @@ export default function App() {
         else if (overlay) target = { track: 'overlay', id: overlay.id };
       }
     }
-    if (target) dispatch({ type: 'split', track: target.track, id: target.id, t: time, newId: uid() });
+    if (target) {
+      dispatch({ type: 'split', track: target.track, id: target.id, t: time, newId: uid() });
+      setCutToken((value) => value + 1);
+      announce('Cortado');
+    }
   }, [selection, project, time]);
 
   const remove = useCallback(() => {
@@ -507,6 +561,8 @@ export default function App() {
         time: timeRef.current,
         playing: playbackRef.current.playing,
         videoIds: projectRef.current.videoClips.map((clip) => clip.id),
+        videoCuts: projectRef.current.videoClips.map((clip) => ({ id: clip.id, in: clip.in, out: clip.out, transition: clip.transitionIn?.type || null })),
+        textLanes: projectRef.current.textClips.map((clip) => ({ id: clip.id, text: clip.text, start: clip.start, lane: clip.lane || 0 })),
         overlayIds: (projectRef.current.overlayClips || []).map((clip) => clip.id),
         textIds: projectRef.current.textClips.map((clip) => clip.id),
         audioIds: projectRef.current.audioClips.map((clip) => clip.id),
@@ -572,6 +628,7 @@ export default function App() {
           mobile={mobile}
           note={platform.persistenceNote()}
           onNew={createAndOpen}
+          onNewMedia={createFromPicker}
           onOpenFile={open}
           onOpen={openRecent}
           onRename={async (id, name) => {
@@ -599,10 +656,43 @@ export default function App() {
         <div className="brand">
           {compact && !mobile && <button className="icon-button" onClick={() => setDrawer(drawer === 'library' ? null : 'library')} title="Biblioteca">☰</button>}
           <button className="brand-home" onClick={goHome} title="Voltar aos projetos">
-            <img src={pixelcutIcon} alt="" />
-            <span className="brand-name">{mobile && project.name && project.name !== 'Projeto sem título' ? project.name : 'PixelCut'}</span>
+            {mobile ? <span className="back-caret" aria-hidden="true">‹</span> : <img src={pixelcutIcon} alt="" />}
+            {!mobile && <span className="brand-name">PixelCut</span>}
           </button>
-          {!mobile && (!narrow || mobile) && <><span className="brand-divider" /><span className="project-title">{project.name || 'Projeto sem título'}</span></>}
+          {mobile ? (
+            nameEdit ? (
+              <input
+                className="project-name-input"
+                value={nameDraft}
+                aria-label="Nome do projeto"
+                autoFocus
+                onFocus={(event) => {
+                  const el = event.currentTarget;
+                  el.scrollLeft = 0;
+                  try { el.setSelectionRange(0, el.value.length); } catch { /* some WebViews ignore selection */ }
+                }}
+                onChange={(event) => setNameDraft(event.target.value)}
+                onBlur={() => {
+                  const name = nameDraft.trim() || 'Projeto sem título';
+                  setNameEdit(false);
+                  if (name !== project.name) dispatch({ type: 'setName', name });
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') event.currentTarget.blur();
+                  if (event.key === 'Escape') { setNameEdit(false); setNameDraft(project.name || ''); }
+                }}
+              />
+            ) : (
+              <button
+                type="button"
+                className="project-name-button"
+                title="Toque para renomear"
+                onClick={() => { setNameDraft(project.name || ''); setNameEdit(true); }}
+              >
+                {project.name || 'Projeto sem título'}
+              </button>
+            )
+          ) : (!narrow && <><span className="brand-divider" /><span className="project-title">{project.name || 'Projeto sem título'}</span></>)}
         </div>
         <div className="actions">
           {!mobile && !compact && <button className="header-button" onClick={goHome}>Projetos</button>}
@@ -617,8 +707,12 @@ export default function App() {
               {saveLabel}
             </button>
           )}
-          <button className="icon-button" onClick={() => dispatch({ type: 'undo' })} disabled={!state.past.length} title="Desfazer">↶</button>
-          <button className="icon-button" onClick={() => dispatch({ type: 'redo' })} disabled={!state.future.length} title="Refazer">↷</button>
+          <button className="history-button" onClick={() => dispatch({ type: 'undo' })} disabled={!state.past.length} title="Desfazer (Ctrl+Z)" aria-label="Desfazer">
+            <span aria-hidden="true">↶</span>
+          </button>
+          <button className="history-button" onClick={() => dispatch({ type: 'redo' })} disabled={!state.future.length} title="Refazer (Ctrl+Y)" aria-label="Refazer">
+            <span aria-hidden="true">↷</span>
+          </button>
           {compact && !mobile && <button className="icon-button" onClick={() => setDrawer(drawer === 'inspector' ? null : 'inspector')} title="Propriedades">⚙</button>}
           <button className="primary export-button" onClick={startExport}>Exportar</button>
           {mobile && <button className="icon-button" aria-expanded={menuOpen} aria-haspopup="menu" onClick={() => setMenuOpen((open) => !open)} title="Mais ações">⋯</button>}
@@ -632,6 +726,13 @@ export default function App() {
             <button onClick={() => { setMenuOpen(false); save(); }}>Salvar</button>
             <button onClick={() => { setMenuOpen(false); saveCopy(); }}>Salvar cópia</button>
             <button onClick={() => { setMenuOpen(false); setSelection(null); setSheet('half'); setDrawer('inspector'); }}>Formato do vídeo</button>
+            <button onClick={() => {
+              const next = !audioScrub;
+              setAudioScrub(next);
+              writeAudioScrubPref(next);
+              setMenuOpen(false);
+              announce(next ? 'Scrubbing sonoro ligado' : 'Scrubbing sonoro desligado');
+            }}>{audioScrub ? 'Desligar som ao arrastar' : 'Ligar som ao arrastar'}</button>
           </div>
         )}
       </header>
@@ -663,7 +764,14 @@ export default function App() {
         <Preview project={project} time={time} seekVer={seekVer} playing={playing} duration={duration}
           emptyDetail={mobile ? 'Depois, toque em ＋ na biblioteca para colocá-lo na timeline.' : undefined}
           onTime={setTime} onEnd={() => setPlaying(false)} onTogglePlay={togglePlay} onSeek={seek}
-          dispatch={dispatch} selection={selection} onSelect={setSelection} />
+          dispatch={dispatch} selection={selection} onSelect={setSelection}
+          scrubbing={scrubbing} audioScrub={audioScrub}
+          onToggleAudioScrub={() => {
+            const next = !audioScrub;
+            setAudioScrub(next);
+            writeAudioScrubPref(next);
+            announce(next ? 'Scrubbing sonoro ligado' : 'Scrubbing sonoro desligado');
+          }} />
         <Inspector project={project} selection={selection} dispatch={dispatch} open={!compact || drawer === 'inspector'} />
       </div>
 
@@ -692,6 +800,10 @@ export default function App() {
         touch={mobile}
         onAdjust={selection ? () => { setSheet('half'); setDrawer('inspector'); } : null}
         onBrowse={() => openCategory('media')}
+        onOpenTransitions={() => openCategory('transitions', { toggle: false })}
+        cutToken={cutToken}
+        onScrubbing={setScrubbing}
+        focusToken={seekVer}
       />
 
       {mobile && (

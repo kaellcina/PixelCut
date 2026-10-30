@@ -2,6 +2,14 @@ import { toFileUrl } from './store.js';
 
 const cache = new Map();
 
+export function canDecodeWaveformInRenderer(media) {
+  if (!media?.path) return false;
+  if (media.type === 'video' && typeof window !== 'undefined' && window.Capacitor?.isNativePlatform?.()) {
+    return false;
+  }
+  return true;
+}
+
 async function peaksFromBuffer(buffer, bins = 720) {
   const ctx = new (window.OfflineAudioContext || window.webkitOfflineAudioContext)(1, 2, 8000);
   const audio = await ctx.decodeAudioData(buffer.slice(0));
@@ -27,6 +35,9 @@ export async function loadWaveform(media) {
         if (result?.peaks?.length) return result;
       }
     } catch { /* Fall through to decode in the renderer. */ }
+    if (!canDecodeWaveformInRenderer(media)) {
+      return { peaks: [], duration: media.duration || 1, placeholder: true };
+    }
     try {
       const response = await fetch(toFileUrl(media.path));
       if (!response.ok) return null;
@@ -40,11 +51,16 @@ export async function loadWaveform(media) {
 }
 
 export function drawWaveform(canvas, bundle, clipIn, clipOut, color = '#7ee0c8') {
-  if (!canvas || !bundle?.peaks?.length) return;
+  if (!canvas) return;
   const width = canvas.width;
   const height = canvas.height;
   const ctx = canvas.getContext('2d');
   ctx.clearRect(0, 0, width, height);
+  if (!bundle?.peaks?.length) {
+    ctx.fillStyle = `${color}33`;
+    ctx.fillRect(0, height / 2 - 1, width, 2);
+    return;
+  }
   const duration = Math.max(0.05, bundle.duration || 1);
   const start = Math.max(0, clipIn || 0) / duration;
   const end = Math.min(1, (clipOut || duration) / duration);
