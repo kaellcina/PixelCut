@@ -77,6 +77,8 @@ export default function App() {
   const sessionRef = useRef(session);
   const projectRef = useRef(project);
   const timeRef = useRef(time);
+  // Media removed from the library stays on disk until the project closes, so Ctrl+Z can bring it back.
+  const removedMediaRef = useRef([]);
   sessionRef.current = session;
   projectRef.current = project;
   timeRef.current = time;
@@ -212,12 +214,23 @@ export default function App() {
     return autosave.flush();
   };
 
+  // Only after a successful save: the file on disk must no longer reference what gets released.
+  // shortcut: media removed right before the app is killed is never released; sweep orphans on startup if storage grows.
+  const releaseRemovedMedia = () => {
+    const kept = new Set(projectRef.current.media.map((item) => item.id));
+    removedMediaRef.current.filter((item) => !kept.has(item.id)).forEach((item) => platform.releaseMedia(item));
+    removedMediaRef.current = [];
+  };
+
   const goHome = async () => {
     setPlaying(false);
     const result = await flushSave();
     if (result.status === 'error') {
       const leave = window.confirm('Falha ao salvar. Voltar à tela inicial mesmo assim? As edições continuam na memória até você tentar de novo.');
       if (!leave) return;
+      removedMediaRef.current = [];
+    } else {
+      releaseRemovedMedia();
     }
     setSession(null);
     setMissing([]);
@@ -504,8 +517,11 @@ export default function App() {
     try {
       const json = await platform.openProject();
       if (!json) return;
-      if (sessionRef.current?.id && !sessionRef.current.ephemeral) await flushSave();
+      const saved = await flushSave();
       const imported = await platform.importProjectJson(json);
+      // Release only once the switch is certain; a failed import keeps the user here with Ctrl+Z.
+      if (saved.status === 'error') removedMediaRef.current = [];
+      else releaseRemovedMedia();
       openDocument(imported.document, imported.missing);
       announce('Projeto importado');
     } catch (error) {
@@ -779,7 +795,7 @@ export default function App() {
           onAddText={addText}
           onRemove={(id) => {
             const item = project.media.find((media) => media.id === id);
-            if (item) platform.releaseMedia(item);
+            if (item) removedMediaRef.current.push(item);
             dispatch({ type: 'removeMedia', id });
           }}
           onApplyEffect={applyEffect}

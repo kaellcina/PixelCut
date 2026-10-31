@@ -55,7 +55,8 @@ export function createAutosave({
   };
 
   const schedule = (payload, fingerprint = '') => {
-    if (fingerprint && fingerprint === lastSaved && status !== 'error') return gen;
+    // A queued job must still be replaced: its lazy payload may now differ from lastSaved.
+    if (fingerprint && fingerprint === lastSaved && status !== 'error' && !pending && inFlight == null) return gen;
     gen += 1;
     pending = { gen, payload, fp: fingerprint };
     if (timer != null) clearTimer(timer);
