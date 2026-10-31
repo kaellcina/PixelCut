@@ -1,13 +1,25 @@
 // Translates the real project into the main-track composition Android can encode.
-// The magnetic timeline lives in store.js. This module does not invent tracks,
-// does not shorten clips to imitate a transition, and does not claim an effect
-// was exported when the native encoder leaves it out.
+// The magnetic timeline lives in store.js. Packed transition overlap is encoded
+// with Media3 (two sequences + compositor). Hard cuts stay concatenations.
+// Effects the encoder still skips are listed as warnings, never as exported fields.
 
-import { clipLength, clipSpeed, exportDuration, isLinked, videoLayout } from '../store.js';
+import { clipLength, clipSpeed, exportDuration, isLinked, TRANSITION_JOIN, videoLayout } from '../store.js';
 import { mediaOwnedPath } from './mediaPath.js';
 
+export const ENCODED_TRANSITIONS = Object.freeze([
+  'dissolve',
+  'fadeblack',
+  'fadewhite',
+  'wipeleft',
+  'wiperight',
+  'wipeup',
+  'wipedown',
+]);
+
+const ENCODED = new Set(ENCODED_TRANSITIONS);
+
 export const EXPORT_LIMITS = {
-  transition: 'As transições não entram no arquivo. Os clipes da faixa principal são unidos em corte seco, cada um com a duração integral.',
+  transition: 'Esta transição sai como dissolver no arquivo Android. A prévia no editor continua com o efeito original.',
   effect: 'Os efeitos visuais da faixa principal não entram no arquivo.',
   zoom: 'O zoom não entra no arquivo.',
   chroma: 'O chroma key não entra no arquivo.',
@@ -27,6 +39,11 @@ function mediaName(media) {
   return media?.name || 'Mídia';
 }
 
+function encodedType(type) {
+  if (!type || type === 'none') return null;
+  return ENCODED.has(type) ? type : 'dissolve';
+}
+
 export function planMainExport(project) {
   const clips = project?.videoClips || [];
   if (!clips.length) {
@@ -38,7 +55,9 @@ export function planMainExport(project) {
   if ((project.textClips || []).length) warnings.add(EXPORT_LIMITS.text);
   if ((project.audioClips || []).length) warnings.add(EXPORT_LIMITS.audioTrack);
 
-  const items = videoLayout(clips).map(({ clip }) => {
+  const joinMs = Math.round(TRANSITION_JOIN * 1000);
+  const layout = videoLayout(clips);
+  const items = layout.map(({ clip, start, end, overlap }, index) => {
     const media = mediaById.get(clip.mediaId);
     if (!media) throw new Error('Um clipe da faixa principal perdeu a mídia.');
     const source = mediaOwnedPath(media) || media.source || '';
@@ -53,7 +72,6 @@ export function planMainExport(project) {
     const outSec = Number(clip.out);
     if (!(outSec > inSec)) throw new Error(`“${mediaName(media)}” tem um corte inválido.`);
     const shownMs = Math.max(1, Math.round(clipLength(clip) * 1000));
-    if (clip.transitionIn?.type && clip.transitionIn.type !== 'none') warnings.add(EXPORT_LIMITS.transition);
     if (clip.effects?.length) warnings.add(EXPORT_LIMITS.effect);
     if (clip.zoom) warnings.add(EXPORT_LIMITS.zoom);
     if (clip.chroma?.enabled) warnings.add(EXPORT_LIMITS.chroma);
@@ -69,38 +87,79 @@ export function planMainExport(project) {
       && (!volumeKnown || volume > 0);
     if (keepAudio && volumeKnown && Math.abs(volume - 1) > 0.001) warnings.add(EXPORT_LIMITS.volume);
 
+    const requested = clip.transitionIn?.type && clip.transitionIn.type !== 'none' ? clip.transitionIn.type : null;
+    const overlapMs = Math.round((overlap || 0) * 1000);
+    const encode = overlapMs >= joinMs ? encodedType(requested) : null;
+    if (requested && encode === 'dissolve' && !ENCODED.has(requested)) warnings.add(EXPORT_LIMITS.transition);
+
+    const startMs = Math.round(start * 1000);
+    const endMs = Math.round(end * 1000);
+    const common = {
+      source,
+      name: mediaName(media),
+      startMs,
+      endMs,
+      durationMs: shownMs,
+      overlapMs: encode ? overlapMs : 0,
+      transition: encode,
+      sequence: index % 2,
+      fadeInMs: 0,
+      fadeOutMs: 0,
+    };
+
     if (media.type === 'image') {
       return {
-        source,
-        name: mediaName(media),
+        ...common,
         type: 'image',
         inMs: 0,
         outMs: shownMs,
-        durationMs: shownMs,
         speed: 1,
         keepAudio: false,
       };
     }
     return {
-      source,
-      name: mediaName(media),
+      ...common,
       type: 'video',
       inMs: Math.round(inSec * 1000),
       outMs: Math.round(outSec * 1000),
-      durationMs: shownMs,
       speed,
       keepAudio,
     };
   });
 
-  const durationMs = items.reduce((sum, item) => sum + item.durationMs, 0);
+  items.forEach((item, index) => {
+    const next = index + 1 < items.length ? items[index + 1] : null;
+    item.fadeInType = item.transition;
+    item.fadeOutType = next && next.transition ? next.transition : null;
+    item.fadeInMs = item.overlapMs || 0;
+    item.fadeOutMs = next ? (next.overlapMs || 0) : 0;
+  });
+
+  const transitions = items
+    .map((item, index) => {
+      if (!item.transition || index === 0) return null;
+      return {
+        startMs: item.startMs,
+        endMs: item.startMs + item.overlapMs,
+        durationMs: item.overlapMs,
+        type: item.transition,
+        incomingIndex: index,
+        outgoingIndex: index - 1,
+        overlayIncoming: index % 2 === 1,
+      };
+    })
+    .filter(Boolean);
+
+  const timelineMs = Math.round(exportDuration(project) * 1000);
   return {
     width: evenDimension(project.width || 1280),
     height: evenDimension(project.height || 720),
     fps: Math.min(60, Math.max(1, Math.round(Number(project.fps) || 30))),
     items,
-    durationMs,
-    timelineMs: Math.round(exportDuration(project) * 1000),
+    transitions,
+    composeOverlaps: transitions.length > 0,
+    durationMs: timelineMs,
+    timelineMs,
     warnings: [...warnings],
   };
 }

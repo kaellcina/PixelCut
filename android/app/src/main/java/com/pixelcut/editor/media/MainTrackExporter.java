@@ -15,6 +15,7 @@ import androidx.media3.common.C;
 import androidx.media3.common.Effect;
 import androidx.media3.common.MediaItem;
 import androidx.media3.common.MimeTypes;
+import androidx.media3.common.audio.AudioProcessor;
 import androidx.media3.common.audio.SpeedProvider;
 import androidx.media3.common.util.UnstableApi;
 import androidx.media3.effect.Presentation;
@@ -47,8 +48,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Encodes the main-track plan with Media3 Transformer and publishes the MP4
- * through MediaStore. Overlays, text, transitions and graded effects are not
- * applied here; the plan is expected to list them as warnings before this runs.
+ * through MediaStore. Packed dissolve / fade / wipe use two interleaved
+ * sequences and a compositor. Hard cuts stay a single concatenation. Overlays,
+ * text and graded effects are still omitted and listed as plan warnings.
  */
 @OptIn(markerClass = UnstableApi.class)
 public final class MainTrackExporter {
@@ -172,20 +174,50 @@ public final class MainTrackExporter {
         int fps = Math.min(60, Math.max(1, plan.optInt("fps", 30)));
         JSONArray items = plan.getJSONArray("items");
         if (items.length() == 0) throw new IOException("Adicione um vídeo à faixa principal antes de exportar.");
-        List<Effect> presentation = new ArrayList<>();
-        presentation.add(Presentation.createForWidthAndHeight(width, height, Presentation.LAYOUT_SCALE_TO_FIT));
-        Effects effects = new Effects(new ArrayList<>(), presentation);
+        JSONArray transitions = plan.optJSONArray("transitions");
+        boolean compose = plan.optBoolean("composeOverlaps") && transitions != null && transitions.length() > 0;
         Set<Integer> tracks = new HashSet<>();
         tracks.add(C.TRACK_TYPE_AUDIO);
         tracks.add(C.TRACK_TYPE_VIDEO);
-        EditedMediaItemSequence.Builder sequence = new EditedMediaItemSequence.Builder(tracks);
-        for (int i = 0; i < items.length(); i++) {
-            sequence.addItem(item(context, items.getJSONObject(i), effects, fps));
+        if (!compose) {
+            EditedMediaItemSequence.Builder sequence = new EditedMediaItemSequence.Builder(tracks);
+            for (int i = 0; i < items.length(); i++) {
+                sequence.addItem(item(context, items.getJSONObject(i), width, height, fps));
+            }
+            return new Composition.Builder(sequence.build()).build();
         }
-        return new Composition.Builder(sequence.build()).build();
+        EditedMediaItemSequence.Builder even = new EditedMediaItemSequence.Builder(tracks);
+        EditedMediaItemSequence.Builder odd = new EditedMediaItemSequence.Builder(tracks);
+        long evenMs = 0;
+        long oddMs = 0;
+        boolean hasOdd = false;
+        for (int i = 0; i < items.length(); i++) {
+            JSONObject spec = items.getJSONObject(i);
+            long startMs = spec.optLong("startMs", 0);
+            boolean overlay = i % 2 == 1;
+            EditedMediaItemSequence.Builder sequence = overlay ? odd : even;
+            long cursor = overlay ? oddMs : evenMs;
+            long gapMs = startMs - cursor;
+            if (gapMs > 1) sequence.addGap(C.msToUs(gapMs));
+            sequence.addItem(item(context, spec, width, height, fps));
+            long endMs = spec.optLong("endMs", startMs + spec.optLong("durationMs"));
+            if (overlay) {
+                oddMs = endMs;
+                hasOdd = true;
+            } else {
+                evenMs = endMs;
+            }
+        }
+        if (!hasOdd) return new Composition.Builder(even.build()).build();
+        long timelineMs = plan.optLong("durationMs", Math.max(evenMs, oddMs));
+        if (evenMs < timelineMs - 1) even.addGap(C.msToUs(timelineMs - evenMs));
+        if (oddMs < timelineMs - 1) odd.addGap(C.msToUs(timelineMs - oddMs));
+        return new Composition.Builder(even.build(), odd.build())
+            .setVideoCompositorSettings(new TransitionCompositor(width, height, transitions))
+            .build();
     }
 
-    private static EditedMediaItem item(Context context, JSONObject spec, Effects effects, int fps) throws IOException, JSONException {
+    private static EditedMediaItem item(Context context, JSONObject spec, int width, int height, int fps) throws IOException, JSONException {
         String name = spec.optString("name", "mídia");
         File file;
         try {
@@ -195,6 +227,7 @@ public final class MainTrackExporter {
         }
         String type = spec.optString("type", "video");
         MediaItem.Builder media = new MediaItem.Builder().setUri(Uri.fromFile(file));
+        Effects effects = itemEffects(spec, width, height);
         if ("image".equals(type)) {
             long durationMs = Math.max(1, Math.round(spec.optDouble("durationMs", 0)));
             media.setImageDurationMs(durationMs);
@@ -215,6 +248,34 @@ public final class MainTrackExporter {
             .setRemoveAudio(!spec.optBoolean("keepAudio", false));
         if (speed > 0.1 && Math.abs(speed - 1) > 0.001) edited.setSpeed(constantSpeed((float) speed));
         return edited.build();
+    }
+
+    private static Effects itemEffects(JSONObject spec, int width, int height) {
+        List<Effect> video = new ArrayList<>();
+        video.add(Presentation.createForWidthAndHeight(width, height, Presentation.LAYOUT_SCALE_TO_FIT));
+        long durationUs = C.msToUs(Math.max(1, spec.optLong("durationMs")));
+        long fadeInUs = C.msToUs(spec.optLong("fadeInMs", spec.optLong("overlapMs")));
+        long fadeOutUs = C.msToUs(spec.optLong("fadeOutMs"));
+        String fadeInType = spec.optString("fadeInType", spec.optString("transition"));
+        String fadeOutType = spec.optString("fadeOutType");
+        if (TransitionRgbMatrix.needed(fadeInType, fadeInUs, fadeOutType, fadeOutUs)) {
+            video.add(new TransitionRgbMatrix(fadeInType, fadeInUs, fadeOutType, fadeOutUs, durationUs));
+        }
+        if (spec.optInt("sequence", 0) == 1) {
+            List<TransitionWipeEffect.Window> wipes = new ArrayList<>();
+            if (TransitionMath.isWipe(fadeInType) && fadeInUs > 0) {
+                wipes.add(new TransitionWipeEffect.Window(fadeInType, 0, fadeInUs, true));
+            }
+            if (TransitionMath.isWipe(fadeOutType) && fadeOutUs > 0) {
+                wipes.add(new TransitionWipeEffect.Window(fadeOutType, Math.max(0, durationUs - fadeOutUs), durationUs, false));
+            }
+            if (!wipes.isEmpty()) video.add(new TransitionWipeEffect(wipes));
+        }
+        List<AudioProcessor> audio = new ArrayList<>();
+        if (spec.optBoolean("keepAudio", false) && (fadeInUs > 0 || fadeOutUs > 0)) {
+            audio.add(new TransitionGainProcessor(fadeInUs, fadeOutUs, durationUs));
+        }
+        return new Effects(audio, video);
     }
 
     private static SpeedProvider constantSpeed(float speed) {

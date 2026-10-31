@@ -442,9 +442,15 @@ async function testAndroidPlan(store) {
   const lengths = project.videoClips.reduce((sum, item) => sum + store.clipLength(item), 0);
   check('main-track clips stay in timeline order', exported.items.map((item) => item.name).join(',') === 'a.mp4,b.mp4');
   check('the cut uses the clip in and out points', exported.items[1].inMs === 1000 && exported.items[1].outMs === 3000 && exported.items[1].durationMs === 2000);
-  check('android duration is the sum of the clips', exported.durationMs === Math.round(lengths * 1000));
-  check('a transition does not shorten the android file', exported.durationMs > Math.round(store.exportDuration(project) * 1000));
-  check('the transition is disclosed and not encoded', exported.warnings.includes(plan.EXPORT_LIMITS.transition) && !exported.items[1].transition);
+  check('android duration follows the packed timeline', exported.durationMs === Math.round(store.exportDuration(project) * 1000));
+  check('a dissolve shortens the android file by the overlap', exported.durationMs < Math.round(lengths * 1000) && exported.items[1].transition === 'dissolve' && exported.items[1].overlapMs > 0);
+  check('encoded dissolve is not listed as missing', !exported.warnings.includes(plan.EXPORT_LIMITS.transition) && exported.composeOverlaps === true);
+  const hard = plan.planMainExport({ ...project, videoClips: [first, clip('c2', 'b', { in: 1, out: 3 })] });
+  check('hard cuts stay concatenated', hard.composeOverlaps === false && hard.durationMs === Math.round(lengths * 1000) && hard.transitions.length === 0);
+  const slide = plan.planMainExport({ ...project, videoClips: [first, clip('c2', 'b', { in: 1, out: 3, transitionIn: { type: 'slideleft', duration: 1 } })] });
+  check('unsupported types fall back to dissolve and disclose it', slide.items[1].transition === 'dissolve' && slide.warnings.includes(plan.EXPORT_LIMITS.transition));
+  const wipe = plan.planMainExport({ ...project, videoClips: [first, clip('c2', 'b', { in: 1, out: 3, transitionIn: { type: 'wipeleft', duration: 0.4 } })] });
+  check('wipe is encoded with packed duration', wipe.items[1].transition === 'wipeleft' && wipe.composeOverlaps === true && !wipe.warnings.includes(plan.EXPORT_LIMITS.transition));
   check('the plan keeps the private file path', exported.items[0].source === source('a') && exported.items[0].keepAudio === true);
   check('output size matches an even editor frame', exported.width === 1278 && exported.height === 718 && exported.fps === 30);
 

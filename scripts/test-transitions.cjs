@@ -176,9 +176,45 @@ function graphOf(project) {
       path: 'https://localhost/_capacitor_file_/data/user/0/com.pixelcut.editor/files/media/clip.mp4',
     })),
   });
-  check('android export still concatenates full clips and discloses the gap', (
-    android.durationMs === 6000
-    && android.warnings.some((text) => /transições não entram/i.test(text))
+  check('android export uses the packed overlap', (
+    near(android.durationMs / 1000, 5.5, 0.02)
+    && android.items[2].transition === 'dissolve'
+    && android.items[1].transition == null
+    && android.composeOverlaps === true
+  ));
+  check('android keeps the hard cut without a fake overlap', android.items[1].overlapMs === 0 && android.transitions.length === 1);
+  const androidFade = plan.planMainExport({
+    ...mixed,
+    media: mixed.media.map((item) => ({
+      ...item,
+      source: '/data/user/0/com.pixelcut.editor/files/media/clip.mp4',
+      path: 'https://localhost/_capacitor_file_/data/user/0/com.pixelcut.editor/files/media/clip.mp4',
+    })),
+    videoClips: [
+      clip('a', 2),
+      clip('b', 2, { transitionIn: { type: 'fadeblack', duration: 0.5 } }),
+      clip('c', 2, { transitionIn: { type: 'wipeleft', duration: 0.5 } }),
+    ],
+  });
+  check('android encodes fade and wipe as distinct overlaps', (
+    androidFade.items[1].transition === 'fadeblack'
+    && androidFade.items[2].transition === 'wipeleft'
+    && androidFade.transitions.length === 2
+    && near(androidFade.durationMs / 1000, 5, 0.02)
+  ));
+  const androidSlide = plan.planMainExport({
+    ...mixed,
+    media: mixed.media.map((item) => ({
+      ...item,
+      source: '/data/user/0/com.pixelcut.editor/files/media/clip.mp4',
+      path: 'https://localhost/_capacitor_file_/data/user/0/com.pixelcut.editor/files/media/clip.mp4',
+    })),
+    videoClips: [clip('a', 2), clip('b', 2, { transitionIn: { type: 'slideleft', duration: 0.5 } })],
+  });
+  check('android falls back to dissolve for slide and still packs duration', (
+    androidSlide.items[1].transition === 'dissolve'
+    && androidSlide.warnings.some((text) => /dissolver/i.test(text))
+    && near(androidSlide.durationMs / 1000, 3.5, 0.02)
   ));
 
   const applyId = store.transitionApplyId(withFade, { track: 'transition', id: 'b' }, 0);

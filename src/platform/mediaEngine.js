@@ -16,7 +16,7 @@ export function engineFor(kind) {
     return {
       id: 'media3-transformer',
       ready: true,
-      summary: 'Faixa principal em MP4: corte, sequência, imagens, velocidade e áudio original. Transições, sobreposições, texto, chroma, efeitos e a faixa de música não entram no arquivo.',
+      summary: 'Faixa principal em MP4: corte, sequência, dissolver, fade, wipe, imagens, velocidade e áudio original. Sobreposições, texto, chroma, efeitos visuais e a faixa de música não entram no arquivo.',
     };
   }
   return {
@@ -32,12 +32,12 @@ export const ANDROID_NATIVE_GAPS = [
   {
     id: 'compose',
     desktop: 'Vários clipes e faixas entram num filtergraph do FFmpeg.',
-    android: 'A faixa principal é concatenada, com corte, velocidade, imagem e resolução. Sobreposição, texto e a faixa de áudio separada ficam de fora.',
+    android: 'A faixa principal é concatenada em corte seco ou sobreposta no overlap das transições. Sobreposição, texto e a faixa de áudio separada ficam de fora.',
   },
   {
     id: 'transition',
     desktop: 'xfade com a duração e o overlap já calculados no projeto.',
-    android: 'Transformer não reproduz o conjunto de transições do FFmpeg. Exige um efeito próprio.',
+    android: 'Dissolver, fade preto/branco e wipe usam duas sequências do Transformer. Os demais tipos saem como dissolver. FFmpeg xfade continua só no Windows.',
   },
   {
     id: 'zoom',
