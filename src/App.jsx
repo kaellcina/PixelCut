@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { CLIP_MOTIONS } from './catalog.js';
 import { togglePlaybackState } from './playback.js';
-import { buildProjectFromImportedMedia, clampPlayhead, clipLength, emptyProject, historyReducer, projectDuration, transitionApplyId, uid, videoClipAt, videoLayout } from './store.js';
+import { buildProjectFromImportedMedia, clampPlayhead, clipLength, emptyProject, formatTime, historyReducer, projectDuration, transitionApplyId, uid, videoClipAt, videoLayout } from './store.js';
 import { audioChainInfo, audioLatency, unlockAudio, voiceSelfTest } from './audioFx.js';
 import { createAutosave } from './projects/autosave.js';
 import { fingerprint, firstVisualMedia } from './projects/schema.js';
@@ -432,10 +432,21 @@ export default function App() {
     const id = transitionApplyId(project, chosen, at);
     if (!id) return announce('Toque no losango entre dois clipes');
     const current = project.videoClips.find((clip) => clip.id === id);
-    dispatch({ type: 'setTransition', id, transition: { type, duration: current?.transitionIn?.duration || 0.5 } });
+    const duration = current?.transitionIn?.duration || 0.5;
+    const before = projectDuration(project);
+    dispatch({ type: 'setTransition', id, transition: { type, duration } });
     transitionPickRef.current = id;
     select({ track: 'transition', id });
-    announce('Transição só neste corte');
+    const after = projectDuration({
+      ...project,
+      videoClips: project.videoClips.map((clip) => (
+        clip.id === id ? { ...clip, transitionIn: { type, duration } } : clip
+      )),
+    });
+    const delta = before - after;
+    announce(delta > 0.02
+      ? `Sobreposição de ${delta.toFixed(2)} s · edição ${formatTime(after)}`
+      : 'Transição neste corte');
   };
 
   const split = useCallback(() => {
@@ -554,6 +565,7 @@ export default function App() {
       projectSnapshot: () => ({
         name: projectRef.current.name,
         clips: projectRef.current.videoClips.length,
+        duration: projectDuration(projectRef.current),
         overlays: (projectRef.current.overlayClips || []).length,
         texts: projectRef.current.textClips.length,
         audio: projectRef.current.audioClips.length,

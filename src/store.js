@@ -2,16 +2,25 @@
 //
 // The video track is magnetic like CapCut's main track: clips play back to back,
 // so their timeline position is derived from order. Text and music clips have a free `start`.
-// Transitions overlap neighboring clips and shorten the composed duration.
+// Transitions overlap neighboring clips (xfade). They do not trim in/out; the composed
+// clock is sum(lengths) − sum(overlaps), shared by the ruler, preview and Windows export.
 
 import {
   MIN_CLIP,
   MAX_TRANSITION,
+  MIN_TRANSITION,
+  DEFAULT_TRANSITION,
+  TRANSITION_JOIN,
   clipSpeed,
   clipLength,
   transitionRoom,
+  resolveTransitionDuration,
   transitionOverlap,
   videoLayout,
+  overlapTotal,
+  clipExclusiveRange,
+  transitionBand,
+  clipLaneWidthPx,
   projectDuration,
   exportDuration,
 } from '../shared/timeline-duration.cjs';
@@ -22,11 +31,19 @@ export const uid = () => Math.random().toString(36).slice(2, 10);
 export {
   MIN_CLIP,
   MAX_TRANSITION,
+  MIN_TRANSITION,
+  DEFAULT_TRANSITION,
+  TRANSITION_JOIN,
   clipSpeed,
   clipLength,
   transitionRoom,
+  resolveTransitionDuration,
   transitionOverlap,
   videoLayout,
+  overlapTotal,
+  clipExclusiveRange,
+  transitionBand,
+  clipLaneWidthPx,
   projectDuration,
   exportDuration,
 };
@@ -205,9 +222,9 @@ export function nearestVideoCut(p, t) {
   let best = null;
   layout.forEach((item, index) => {
     if (index === 0) return;
-    const cut = item.start + item.overlap / 2;
-    const dist = Math.abs(cut - t);
-    if (!best || dist < best.dist) best = { dist, index, clip: item.clip, cut, prev: layout[index - 1] };
+    const band = transitionBand(item);
+    const dist = Math.abs(band.cut - t);
+    if (!best || dist < best.dist) best = { dist, index, clip: item.clip, cut: band.cut, prev: layout[index - 1] };
   });
   return best;
 }
@@ -387,9 +404,12 @@ function reduceProject(p, a) {
           if (c.id !== a.id) return c;
           if (!a.transition) return { ...c, transitionIn: null };
           const index = p.videoClips.findIndex((item) => item.id === c.id);
+          if (index <= 0) return c;
           const room = transitionRoom(p.videoClips[index - 1], c);
-          const requested = Number(a.transition.duration);
-          const duration = Math.min(room, Math.max(0.15, Number.isFinite(requested) ? requested : 0.5));
+          const duration = resolveTransitionDuration(a.transition.duration, room);
+          if (duration < MIN_TRANSITION && room < MIN_TRANSITION) {
+            return { ...c, transitionIn: { type: a.transition.type, duration: room } };
+          }
           return { ...c, transitionIn: { type: a.transition.type, duration } };
         }),
       };

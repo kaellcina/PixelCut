@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { MIN_CLIP, clipLength, formatTime, isLinked, nearestVideoCut, toFileUrl, uid, videoInsertIndex, videoLayout } from '../store.js';
+import { MIN_CLIP, clipLaneWidthPx, clipLength, formatTime, isLinked, nearestVideoCut, toFileUrl, transitionBand, uid, videoInsertIndex, videoLayout } from '../store.js';
 import { TimeField } from './Preview.jsx';
 import { captureMediaFrames, filmstripTileCount, frameAt, prefetchFilmstrips } from '../filmstrip.js';
 import { transitionById } from '../catalog.js';
@@ -237,7 +237,7 @@ export default function Timeline({ project, time, duration, playing, selection, 
 
   const scrub = (event) => {
     if (event.button !== 0 || gestureRef.current) return;
-    if (event.target.closest('.tl-head, .handle, .transition-mark')) return;
+    if (event.target.closest('.tl-head, .handle, .transition-mark, .transition-band')) return;
     if (event.target.closest('.clip') && !isPlayheadHit(
       event.clientX - (scrollRef.current?.getBoundingClientRect().left || 0) + (scrollRef.current?.scrollLeft || 0),
       time,
@@ -318,13 +318,13 @@ export default function Timeline({ project, time, duration, playing, selection, 
     hit.style.pointerEvents = 'none';
     const below = document.elementFromPoint(event.clientX, event.clientY);
     hit.style.pointerEvents = previous;
-    if (below?.closest('.transition-mark, .handle')) return;
+    if (below?.closest('.transition-mark, .transition-band, .handle')) return;
     scrub(event);
   };
 
   const grabPlayhead = (event) => {
     if (event.button !== 0 || gestureRef.current) return;
-    if (event.target.closest('.transition-mark, .handle, .tl-head, .playhead-handle, .playhead-hit')) return;
+    if (event.target.closest('.transition-mark, .transition-band, .handle, .tl-head, .playhead-handle, .playhead-hit')) return;
     const scroller = scrollRef.current;
     if (!scroller) return;
     const rect = scroller.getBoundingClientRect();
@@ -335,7 +335,7 @@ export default function Timeline({ project, time, duration, playing, selection, 
 
   const panTimeline = (event) => {
     if (event.button !== 0 || gestureRef.current) return;
-    if (event.target.closest('.clip, .handle, .transition-mark, .playhead-handle')) return;
+    if (event.target.closest('.clip, .handle, .transition-mark, .transition-band, .playhead-handle')) return;
     const scroller = scrollRef.current;
     if (!scroller) return;
     const x0 = event.clientX;
@@ -644,59 +644,92 @@ export default function Timeline({ project, time, duration, playing, selection, 
             </div>
 
             <TrackRow label="V" name="Vídeo" type="video" hint="Vídeo principal" dragOverTrack={dragOverTrack} dropProps={dropProps} trackKey="video" onPointerDown={touch ? scrub : panTimeline} onPan={panTimeline} enabled empty={!layout.length}>
-              {layout.map((item) => (
-                <Clip
-                  key={item.clip.id}
-                  pps={pps}
-                  selection={selection}
-                  track="video"
-                  clip={item.clip}
-                  start={item.start}
-                  length={item.end - item.start}
-                  media={mediaById[item.clip.mediaId]}
-                  label={mediaById[item.clip.mediaId]?.name ?? 'Vídeo'}
-                  moving={movingId === item.clip.id}
-                  dragDx={movingId === item.clip.id ? dragDx : 0}
-                  compact={touch}
-                  onDown={(event, mode) => interactClip(event, 'video', item.clip, mode)}
-                />
-              ))}
-              {layout.map((item, index) => index > 0 ? (
-                <button
-                  key={`tr-${item.clip.id}`}
-                  type="button"
-                  className={`transition-mark ${item.clip.transitionIn?.type && item.clip.transitionIn.type !== 'none' ? 'on' : 'off'} ${selection?.track === 'transition' && selection.id === item.clip.id ? 'selected' : ''}`}
-                  style={{ left: (item.start + Math.max(item.overlap, 0) / 2) * pps - (touch ? 22 : 11) }}
-                  title={item.clip.transitionIn?.type ? transitionById(item.clip.transitionIn.type).name : 'Adicionar transição'}
-                  onPointerDown={(event) => {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    onSelect({ track: 'transition', id: item.clip.id });
-                    onSeek(item.start + item.overlap / 2);
-                    onOpenTransitions?.();
-                  }}
-                >
-                  <span className="transition-mark-face">
-                    <span>{item.clip.transitionIn?.type && item.clip.transitionIn.type !== 'none' ? '◆' : '+'}</span>
-                  </span>
-                </button>
-              ) : null)}
+              {layout.map((item, index) => {
+                const next = layout[index + 1];
+                return (
+                  <Clip
+                    key={item.clip.id}
+                    pps={pps}
+                    selection={selection}
+                    track="video"
+                    clip={item.clip}
+                    start={item.start}
+                    length={item.end - item.start}
+                    overlapIn={item.overlap}
+                    overlapOut={next ? next.overlap : 0}
+                    media={mediaById[item.clip.mediaId]}
+                    label={mediaById[item.clip.mediaId]?.name ?? 'Vídeo'}
+                    moving={movingId === item.clip.id}
+                    dragDx={movingId === item.clip.id ? dragDx : 0}
+                    compact={touch}
+                    onDown={(event, mode) => interactClip(event, 'video', item.clip, mode)}
+                  />
+                );
+              })}
+              {layout.map((item, index) => {
+                if (index === 0) return null;
+                const band = transitionBand(item);
+                const markPx = touch ? 22 : 11;
+                const active = !!(item.clip.transitionIn?.type && item.clip.transitionIn.type !== 'none');
+                const selected = selection?.track === 'transition' && selection.id === item.clip.id;
+                const name = active ? transitionById(item.clip.transitionIn.type).name : 'Adicionar transição';
+                const selectCut = (event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  onSelect({ track: 'transition', id: item.clip.id });
+                  onSeek(band.cut);
+                  onOpenTransitions?.();
+                };
+                return (
+                  <React.Fragment key={`tr-${item.clip.id}`}>
+                    {band.active ? (
+                      <button
+                        type="button"
+                        className={`transition-band ${selected ? 'selected' : ''}`}
+                        style={{ left: band.start * pps, width: Math.max(2, band.length * pps) }}
+                        title={`${name} · sobreposição ${formatTime(band.length)}`}
+                        onPointerDown={selectCut}
+                      />
+                    ) : null}
+                    <button
+                      type="button"
+                      className={`transition-mark ${active ? 'on' : 'off'} ${selected ? 'selected' : ''}`}
+                      style={{ left: band.cut * pps - markPx }}
+                      title={band.active ? `${name} · ${formatTime(band.length)}` : name}
+                      onPointerDown={selectCut}
+                    >
+                      <span className="transition-mark-face">
+                        <span>{active ? '◆' : '+'}</span>
+                      </span>
+                    </button>
+                  </React.Fragment>
+                );
+              })}
             </TrackRow>
 
             {shown.linked && (
               <TrackRow label="A" name="Áudio" type="audio" hint="Áudio ligado" dragOverTrack={dragOverTrack} dropProps={dropProps} trackKey="linked" onPointerDown={touch ? scrub : panTimeline} onPan={panTimeline} empty={!layout.some((item) => isLinked(item.clip))}>
-                {layout.filter((item) => isLinked(item.clip)).map((item) => (
-                  <div
-                    key={`a-${item.clip.id}`}
-                    className={`clip audio linked ${selection?.track === 'video' && selection.id === item.clip.id ? 'selected' : ''} ${movingId === item.clip.id ? 'moving' : ''}`}
-                    style={{ left: item.start * pps, width: Math.max(14, (item.end - item.start) * pps), transform: movingId === item.clip.id && dragDx ? `translateX(${dragDx}px)` : undefined }}
-                    onPointerDown={(event) => interactClip(event, 'video', item.clip, 'move')}
-                    title="Áudio ligado ao vídeo"
-                  >
-                    <Waveform media={mediaById[item.clip.mediaId]} clipIn={item.clip.in} clipOut={item.clip.out} width={Math.max(14, (item.end - item.start) * pps)} />
-                    <span className="clip-label">Áudio ligado</span>
-                  </div>
-                ))}
+                {layout.filter((item) => isLinked(item.clip)).map((item) => {
+                  const next = layout[layout.findIndex((entry) => entry.clip.id === item.clip.id) + 1];
+                  const width = clipLaneWidthPx(item.end - item.start, pps);
+                  return (
+                    <div
+                      key={`a-${item.clip.id}`}
+                      className={`clip audio linked ${selection?.track === 'video' && selection.id === item.clip.id ? 'selected' : ''} ${movingId === item.clip.id ? 'moving' : ''}`}
+                      style={{
+                        left: item.start * pps,
+                        width,
+                        transform: movingId === item.clip.id && dragDx ? `translateX(${dragDx}px)` : undefined,
+                        clipPath: clipOverlapPath(item.overlap, next && isLinked(next.clip) ? next.overlap : 0, pps, width),
+                      }}
+                      onPointerDown={(event) => interactClip(event, 'video', item.clip, 'move')}
+                      title="Áudio ligado ao vídeo"
+                    >
+                      <Waveform media={mediaById[item.clip.mediaId]} clipIn={item.clip.in} clipOut={item.clip.out} width={width} />
+                      <span className="clip-label">Áudio ligado</span>
+                    </div>
+                  );
+                })}
               </TrackRow>
             )}
           </div>
@@ -767,12 +800,33 @@ function TrackRow({ label, name, type, hint, children, dragOverTrack, dropProps,
   );
 }
 
-function Clip({ pps, selection, track, clip, start, length, label, media, onDown, moving = false, dragDx = 0, compact = false }) {
+function clipOverlapPath(overlapIn, overlapOut, pps, width) {
+  const inward = Math.max(0, (Number(overlapIn) || 0) * pps);
+  const outward = Math.max(0, (Number(overlapOut) || 0) * pps);
+  if (inward < 0.5 && outward < 0.5) return undefined;
+  const maxEdge = Math.max(0, width / 2 - 1);
+  const left = Math.min(inward, maxEdge);
+  const right = Math.min(outward, maxEdge);
+  return `polygon(${left}px 0, calc(100% - ${right}px) 0, 100% 50%, calc(100% - ${right}px) 100%, ${left}px 100%, 0 50%)`;
+}
+
+function Clip({ pps, selection, track, clip, start, length, label, media, onDown, moving = false, dragDx = 0, compact = false, overlapIn = 0, overlapOut = 0 }) {
   const selected = selection && selection.track === track && selection.id === clip.id;
   const hasFx = clip.effects?.length || clip.audioEffects?.length || clip.chroma?.enabled;
-  const width = Math.max(14, length * pps);
+  const magnetic = track === 'video';
+  const width = magnetic ? clipLaneWidthPx(length, pps) : Math.max(14, length * pps);
   return (
-    <div className={`clip ${track} ${selected ? 'selected' : ''} ${moving ? 'moving' : ''}`} style={{ left: start * pps, width, transform: moving && dragDx ? `translateX(${dragDx}px)` : undefined }} onPointerDown={(event) => onDown(event, 'move')} title={`${label} · ${formatTime(length)}`}>
+    <div
+      className={`clip ${track} ${selected ? 'selected' : ''} ${moving ? 'moving' : ''}`}
+      style={{
+        left: start * pps,
+        width,
+        transform: moving && dragDx ? `translateX(${dragDx}px)` : undefined,
+        clipPath: magnetic ? clipOverlapPath(overlapIn, overlapOut, pps, width) : undefined,
+      }}
+      onPointerDown={(event) => onDown(event, 'move')}
+      title={`${label} · ${formatTime(length)}`}
+    >
       {media?.type === 'video' && track !== 'audio' ? <Filmstrip media={media} clipIn={clip.in} clipOut={clip.out} width={width} compact={compact} /> : null}
       {media?.type === 'image' ? <img className="clip-image" src={toFileUrl(media.path)} alt="" draggable={false} /> : null}
       {track === 'audio' ? <Waveform media={media} clipIn={clip.in} clipOut={clip.out} width={width} /> : null}

@@ -195,6 +195,28 @@ function expectMedia(file, info, { duration, width = 1280, height = 720 }) {
   if (!(first[0] > 140 && first[1] > 140 && first[2] < 80)) throw new Error(`xfade start is not yellow (${first.join(',')})`);
   if (!(last[0] > 140 && last[2] > 140 && last[1] < 80)) throw new Error(`xfade end is not magenta (${last.join(',')})`);
 
+  // 6b. Hard cut then dissolve: 2s + 2s + 2s with 0.5s only on the last cut => 5.5s
+  const mixedProject = base({
+    videoClips: [
+      { id: 'va', mediaId: 'c1', in: 0, out: 2, volume: 1, muted: false, linkedAudio: true, speed: 1 },
+      { id: 'vb', mediaId: 'c2', in: 0, out: 2, volume: 1, muted: false, linkedAudio: true, speed: 1 },
+      { id: 'vc', mediaId: 'mv', in: 0, out: 2, volume: 1, muted: false, linkedAudio: true, speed: 1, transitionIn: { type: 'dissolve', duration: 0.5 } },
+    ],
+  });
+  if (!near(projectDuration(mixedProject), 5.5, 0.05)) throw new Error(`mixed timeline ${projectDuration(mixedProject)}`);
+  const mixed = await run('mixed-cut', mixedProject);
+  expectMedia(mixed.out, mixed.info, { duration: 5.5 });
+  if (mixed.graph.includes('duration=0.040')) throw new Error('mixed export invented a 40ms xfade on the hard cut');
+  if (!mixed.graph.includes('concat=n=2:v=1:a=0') || !mixed.graph.includes('xfade=transition=fade:duration=0.500')) {
+    throw new Error(`mixed graph lost concat+xfade (${mixed.graph.slice(0, 240)})`);
+  }
+  const mixedStart = rgbAt(mixed.out, 0.4, 640, 360, dir);
+  const mixedJoin = rgbAt(mixed.out, 2.05, 640, 360, dir);
+  const mixedEnd = rgbAt(mixed.out, 5.2, 640, 360, dir);
+  if (!(mixedStart[0] > 140 && mixedStart[1] > 140 && mixedStart[2] < 80)) throw new Error(`mixed start is not yellow (${mixedStart.join(',')})`);
+  if (!(mixedJoin[0] > 140 && mixedJoin[2] > 140 && mixedJoin[1] < 80)) throw new Error(`mixed hard cut should already be magenta (${mixedJoin.join(',')})`);
+  if (!isRed(mixedEnd)) throw new Error(`mixed tail is not red (${mixedEnd.join(',')})`);
+
   // 7. Chroma key still keys, and a 5s overlay still extends the file
   const chromaProject = base({
     videoClips: [{ id: 'vk', mediaId: 'mk', in: 0, out: 3, volume: 1, muted: false, linkedAudio: true, speed: 1, chroma: { enabled: true, color: '#00ff00', similarity: 0.4 } }],
@@ -221,6 +243,7 @@ function expectMedia(file, info, { duration, width = 1280, height = 720 }) {
     audio: audio.info.duration,
     inside: inside.info.duration,
     xfade: xfade.info.duration,
+    mixed: mixed.info.duration,
     chroma: chroma.info.duration,
     overlayTail: overlayTailCenter,
     audioTailDb: Number(tailDb.toFixed(1)),

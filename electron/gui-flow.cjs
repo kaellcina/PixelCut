@@ -137,7 +137,19 @@ module.exports = function guiFlow(win, app) {
 
       await run(`window.__fve.select({ track: 'video', id: ${JSON.stringify('v-gui-1')} })`);
       await run(`window.__fve.dispatch({ type: 'toggleEffect', track: 'video', id: 'v-gui-1', effect: 'grain' })`);
+      const durationBeforeFade = (await snap()).duration;
       await run(`window.__fve.dispatch({ type: 'setTransition', id: 'v-gui-2', transition: { type: 'dissolve', duration: 0.4 } })`);
+      await wait(250);
+      const afterFade = await snap();
+      const marks = await run(`({ band: !!document.querySelector('.transition-band'), on: !!document.querySelector('.transition-mark.on'), clips: document.querySelectorAll('.clip.video').length })`);
+      check('transition shortens the timeline clock', afterFade.duration < durationBeforeFade - 0.2, `before=${durationBeforeFade} after=${afterFade.duration}`);
+      check('transition band and marker stay on the cut', marks.band && marks.on && marks.clips >= 2, JSON.stringify(marks));
+      await run(`window.__fve.dispatch({ type: 'undo' })`);
+      await wait(150);
+      const undone = await snap();
+      check('undo restores the packed duration', Math.abs(undone.duration - durationBeforeFade) < 0.05, `undone=${undone.duration}`);
+      await run(`window.__fve.dispatch({ type: 'redo' })`);
+      await wait(150);
       if (keyed) {
         await run(`window.__fve.dispatch({ type: 'addToTimeline', mediaId: ${JSON.stringify(keyed.id)}, clipId: 'o-key', at: 0.1, track: 'overlay' })`);
         await wait(200);

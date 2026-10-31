@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { clipLength, formatTime, transitionRoom } from '../store.js';
+import { MIN_TRANSITION, clipLength, formatTime, projectDuration, transitionOverlap, transitionRoom } from '../store.js';
 import { TextAnimThumb, TransitionThumb, ZoomThumb } from './FxThumbs.jsx';
 import { letterStyle } from '../motion.js';
 import { ASPECTS, AUDIO_EFFECTS, AUDIO_GROUPS, CLIP_MOTIONS, ENTER_ANIMS, LETTER_FX, TEXT_ANIMS, TEXT_FONTS, VIDEO_EFFECTS, aspectOf, fontById, transitionById } from '../catalog.js';
@@ -244,17 +244,30 @@ export default function Inspector({ project, selection, dispatch, open }) {
 
       {clip && track === 'transition' && (() => {
         const index = project.videoClips.findIndex((item) => item.id === clip.id);
-        const room = transitionRoom(project.videoClips[index - 1], clip);
+        const prev = project.videoClips[index - 1];
+        const room = transitionRoom(prev, clip);
         const active = clip.transitionIn?.type && clip.transitionIn.type !== 'none';
-        const shown = Math.min(clip.transitionIn?.duration || 0.5, room);
-        const minDur = Math.min(0.15, room);
+        const overlap = active ? transitionOverlap(prev, clip) : 0;
+        const shown = overlap || Math.min(clip.transitionIn?.duration || 0.5, room);
+        const minDur = Math.min(0.15, Math.max(MIN_TRANSITION, room));
+        const packed = projectDuration(project);
         return (
           <div className="fields">
-            <div className="media-info-card"><strong>{active ? transitionById(clip.transitionIn.type).name : 'Sem transição'}</strong><small>Escolha o tipo na biblioteca. Aqui fica a duração deste corte.</small></div>
+            <div className="media-info-card">
+              <strong>{active ? transitionById(clip.transitionIn.type).name : 'Sem transição'}</strong>
+              <small>
+                {active
+                  ? `Sobreposição real de ${shown.toFixed(2)} s neste corte. A edição fica ${shown.toFixed(2)} s mais curta aqui (não corta o arquivo). Duração da timeline: ${formatTime(packed)}.`
+                  : 'A transição mistura os dois clipes no corte. Os pontos in/out não mudam.'}
+              </small>
+            </div>
             {active && <TransitionThumb id={clip.transitionIn.type} />}
             <button className="mini-chip" onClick={() => dispatch({ type: 'setTransition', id: clip.id, transition: null })}>Nenhuma</button>
-            {active && room >= 0.15 && (
-              <SliderField label="Duração" value={shown} min={minDur} max={room} step={0.05} onChange={(duration) => dispatch({ type: 'setTransition', id: clip.id, transition: { type: clip.transitionIn.type, duration } })} format={(value) => `${value.toFixed(2)}s`} />
+            {active && room >= MIN_TRANSITION && (
+              <SliderField label="Sobreposição" value={shown} min={minDur} max={room} step={0.05} onChange={(duration) => dispatch({ type: 'setTransition', id: clip.id, transition: { type: clip.transitionIn.type, duration } })} format={(value) => `${value.toFixed(2)}s`} />
+            )}
+            {active && room < MIN_TRANSITION && (
+              <small className="field-hint">Clipes curtos demais para alargar esta transição.</small>
             )}
           </div>
         );

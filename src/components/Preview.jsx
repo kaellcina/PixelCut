@@ -174,7 +174,7 @@ export default function Preview({ project, time, seekVer, playing, duration, onT
     const progress = incoming && incoming.overlap > 0
       ? Math.max(0, Math.min(1, (previewAt - incoming.start) / incoming.overlap))
       : null;
-    const showB = !!(mediaB && (isPlaying || (progress != null && progress > 0.04 && progress < 0.96)));
+    const showB = !!(mediaB && (isPlaying || progress != null));
 
     if (mediaA) {
       const clip = layers[0].clip;
@@ -312,13 +312,14 @@ export default function Preview({ project, time, seekVer, playing, duration, onT
     return () => observer.disconnect();
   }, [project.width, project.height]);
 
-  const layers = videoClipsAt(project, nudgePreviewTime(project, time));
+  const previewAt = nudgePreviewTime(project, time);
+  const layers = videoClipsAt(project, previewAt);
   const mainClip = layers[0]?.clip;
   const texts = project.textClips.filter((item) => time >= item.start && time < item.start + item.duration);
   const overlaysNow = (project.overlayClips || []).filter((clip) => time >= clip.start && time < clip.start + clipLength(clip));
   const transType = layers[1]?.clip.transitionIn?.type;
   const transProgress = layers.length > 1 && layers[1].overlap
-    ? (time - layers[1].start) / Math.max(0.04, layers[1].overlap)
+    ? (previewAt - layers[1].start) / Math.max(0.04, layers[1].overlap)
     : 0;
   const mix = layers.length > 1 ? transitionMix(transType || 'dissolve', transProgress) : { a: { opacity: 1 }, b: { opacity: 0 } };
   const zoomed = (part, layer) => {

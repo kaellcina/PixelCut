@@ -12,6 +12,7 @@ const {
   clipLength,
   clipSpeed,
   transitionOverlap,
+  TRANSITION_JOIN,
   videoLayout,
   projectDuration,
 } = require('../shared/timeline-duration.cjs');
@@ -450,7 +451,7 @@ function buildExportArgs(project, outFile, tmpDir) {
     }
   });
 
-  const hasXfade = clips.some((c, i) => i > 0 && transitionOverlap(clips[i - 1], c) > 0.05);
+  const hasXfade = clips.some((c, i) => i > 0 && transitionOverlap(clips[i - 1], c) >= TRANSITION_JOIN);
   let videoEnd = clips.reduce((s, c) => s + clipLength(c), 0);
   if (!hasXfade) {
     filters.push(clips.map((_, i) => `[v${i}][a${i}]`).join('') + `concat=n=${clips.length}:v=1:a=1[vcat][acat]`);
@@ -459,13 +460,24 @@ function buildExportArgs(project, outFile, tmpDir) {
     let aOut = 'a0';
     let offset = clipLength(clips[0]);
     for (let i = 1; i < clips.length; i += 1) {
-      const overlap = Math.max(0.04, transitionOverlap(clips[i - 1], clips[i]));
-      const fade = XFADE[(clips[i].transitionIn && clips[i].transitionIn.type) || 'dissolve'] || 'fade';
-      filters.push(`[${vOut}][v${i}]xfade=transition=${fade}:duration=${num(overlap)}:offset=${num(offset - overlap)}[vx${i}]`);
-      filters.push(`[${aOut}][a${i}]acrossfade=d=${num(overlap)}[ax${i}]`);
-      vOut = `vx${i}`;
-      aOut = `ax${i}`;
-      offset += clipLength(clips[i]) - overlap;
+      const overlap = transitionOverlap(clips[i - 1], clips[i]);
+      const vNext = `vx${i}`;
+      const aNext = `ax${i}`;
+      if (overlap >= TRANSITION_JOIN) {
+        const fade = XFADE[(clips[i].transitionIn && clips[i].transitionIn.type) || 'dissolve'] || 'fade';
+        // concat emits AVTB (1/1e6); fps=N clips stay 1/N. xfade requires matching timebases.
+        filters.push(`[${vOut}]settb=AVTB[xf${i}a]`);
+        filters.push(`[v${i}]settb=AVTB[xf${i}b]`);
+        filters.push(`[xf${i}a][xf${i}b]xfade=transition=${fade}:duration=${num(overlap)}:offset=${num(offset - overlap)}[${vNext}]`);
+        filters.push(`[${aOut}][a${i}]acrossfade=d=${num(overlap)}[${aNext}]`);
+        offset += clipLength(clips[i]) - overlap;
+      } else {
+        filters.push(`[${vOut}][v${i}]concat=n=2:v=1:a=0,settb=AVTB[${vNext}]`);
+        filters.push(`[${aOut}][a${i}]concat=n=2:v=0:a=1[${aNext}]`);
+        offset += clipLength(clips[i]);
+      }
+      vOut = vNext;
+      aOut = aNext;
     }
     filters.push(`[${vOut}]format=${pix}[vcat]`);
     filters.push(`[${aOut}]aformat=sample_fmts=fltp:channel_layouts=stereo[acat]`);
