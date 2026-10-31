@@ -11,6 +11,7 @@ import {
   deleteProject,
   duplicateProject,
   getPixelCutPlugin,
+  getProjectRepository,
   getProjectThumbnail,
   importProjectJson,
   listProjects,
@@ -71,10 +72,20 @@ export async function importMedia() {
   }
 }
 
-export function releaseMedia(item) {
+// Duplicated projects share the same private file, so delete only when no saved project still uses it.
+export async function releaseMedia(item) {
   const source = mediaOwnedPath(item) || (item && typeof item === 'object' ? item.source : '');
   if (!source) return;
-  native().deleteMedia({ source }).catch(() => {});
+  try {
+    const repo = await getProjectRepository();
+    for (const summary of await repo.listProjects()) {
+      const doc = await repo.loadProject(summary.id);
+      if ((doc.project?.media || []).some((media) => (mediaOwnedPath(media) || media?.source) === source)) return;
+    }
+  } catch {
+    return; // Cannot prove the file is unused: keeping it costs storage, deleting it could cost a video.
+  }
+  await native().deleteMedia({ source }).catch(() => {});
 }
 
 export function onAppClosing(callback) {

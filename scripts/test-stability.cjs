@@ -66,6 +66,22 @@ function check(name, condition, detail = '') {
   await autosave.flush();
   check('undo/redo still persist the restored timeline', writes[writes.length - 1] === 'after-undo');
 
+  // Toggle on -> off -> on inside one debounce: the lazy payload reads live state, like App.jsx does.
+  let live = 'a';
+  const toggled = [];
+  const lazy = autosaveMod.createAutosave({ delay: 0, save: async (payload) => { toggled.push(payload.mark); } });
+  lazy.schedule(() => ({ mark: live }), live);
+  await lazy.flush();
+  live = 'b';
+  lazy.schedule(() => ({ mark: live }), live);
+  live = 'a';
+  lazy.schedule(() => ({ mark: live }), live);
+  await lazy.flush();
+  live = 'b';
+  lazy.schedule(() => ({ mark: live }), live);
+  await lazy.flush();
+  check('reverting a queued edit and redoing it still saves the final state', toggled[toggled.length - 1] === 'b');
+
   const beta = store.buildProjectFromImportedMedia([{
     id: 'legacy',
     name: 'beta.mp4',
