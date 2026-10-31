@@ -15,6 +15,7 @@ import HomeScreen from './components/HomeScreen.jsx';
 import MissingMediaDialog from './components/MissingMediaDialog.jsx';
 import { platform, prefersMobileLayout } from './platform/index.js';
 import { androidVisualTransitionWarnings, planMainExport } from './platform/exportPlan.js';
+import { releaseQueued } from './platform/mediaRelease.js';
 import { readAudioScrubPref, writeAudioScrubPref } from './audioScrub.js';
 import pixelcutIcon from '../assets/icon.png';
 
@@ -215,11 +216,13 @@ export default function App() {
   };
 
   // Only after a successful save: the file on disk must no longer reference what gets released.
+  // Failed releases stay queued and are retried on the next project close.
   // shortcut: media removed right before the app is killed is never released; sweep orphans on startup if storage grows.
-  const releaseRemovedMedia = () => {
-    const kept = new Set(projectRef.current.media.map((item) => item.id));
-    removedMediaRef.current.filter((item) => !kept.has(item.id)).forEach((item) => platform.releaseMedia(item));
+  const releaseRemovedMedia = async () => {
+    const queued = removedMediaRef.current;
     removedMediaRef.current = [];
+    const { retry } = await releaseQueued(queued, projectRef.current.media, (item) => platform.releaseMedia(item));
+    removedMediaRef.current.push(...retry);
   };
 
   const goHome = async () => {
@@ -537,6 +540,8 @@ export default function App() {
       if (next?.error) alert(next.error);
       return;
     }
+    // The old file is released on close like a removal, so Ctrl+Z and duplicated projects keep it.
+    removedMediaRef.current.push(item);
     dispatch({ type: 'replaceMedia', item: { ...item, ...next, id: item.id, missing: false } });
     setMissing((current) => current.filter((entry) => entry.id !== mediaId));
     announce('Mídia localizada');

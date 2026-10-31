@@ -225,6 +225,59 @@ function projectWith(mediaExtra = {}, clips = [{ id: 'v1', mediaId: 'm1', in: 0,
   const lowSpace = 'Não há espaço livre suficiente para copiar este arquivo.';
   check('low-space copy error stays user-facing', /espaço livre/.test(lowSpace));
 
+  // Deferred media release: remove -> undo -> reopen, duplicated projects, and I/O failures.
+  const release = await load('platform/mediaRelease.js');
+  const relFs = memory.createMemoryStore();
+  const relRepo = repoMod.createProjectRepository(relFs);
+  const deleted = [];
+  const deps = (overrides = {}) => ({
+    loadRepo: async () => relRepo,
+    deleteFile: async (source) => { deleted.push(source); return { ok: true }; },
+    ...overrides,
+  });
+  const releaseWith = (o) => (item) => release.releaseOwnedFile(item, deps(o));
+
+  const orig = await relRepo.createProject({ name: 'Original' });
+  await relRepo.saveProject({ id: orig.document.id, project: mediaPath.persistableProject(projectWith()), playhead: 0 });
+
+  let hist = { past: [], present: (await relRepo.loadProject(orig.document.id)).project, future: [] };
+  const queue = [hist.present.media[0]];
+  hist = storeMod.historyReducer(hist, { type: 'removeMedia', id: 'm1' });
+  hist = storeMod.historyReducer(hist, { type: 'undo' });
+  await relRepo.saveProject({ id: orig.document.id, project: mediaPath.persistableProject(hist.present), playhead: 0 });
+  const undone = await release.releaseQueued(queue, hist.present.media, releaseWith());
+  const reopenedOrig = await repoMod.createProjectRepository(relFs).loadProject(orig.document.id);
+  check('remove -> undo -> close never touches the file', undone.results.length === 0 && deleted.length === 0);
+  check('remove -> undo -> reopen keeps the clip and its source', reopenedOrig.project.videoClips.length === 1 && reopenedOrig.project.media[0].source === PRIVATE);
+
+  const copy = await relRepo.duplicateProject(orig.document.id);
+  let copyHist = { past: [], present: copy.document.project, future: [] };
+  const copyQueue = [copyHist.present.media[0]];
+  copyHist = storeMod.historyReducer(copyHist, { type: 'removeMedia', id: 'm1' });
+  await relRepo.saveProject({ id: copy.document.id, project: mediaPath.persistableProject(copyHist.present), playhead: 0 });
+  const fromCopy = await release.releaseQueued(copyQueue, copyHist.present.media, releaseWith());
+  const origAfterCopy = await repoMod.createProjectRepository(relFs).loadProject(orig.document.id);
+  check('removing media in a duplicate keeps the shared file', fromCopy.results.join() === 'in-use' && fromCopy.retry.length === 0 && deleted.length === 0);
+  check('the original still opens with its media after the copy dropped it', origAfterCopy.project.media[0].source === PRIVATE && origAfterCopy.project.videoClips.length === 1);
+
+  const listFails = await release.releaseQueued(copyQueue, [], releaseWith({ loadRepo: async () => { throw new Error('EIO'); } }));
+  check('unreadable project list keeps the file and queues a retry', listFails.results.join() === 'failed' && listFails.retry.length === 1 && deleted.length === 0);
+  const brokenRepo = { listProjects: async () => [{ id: 'x' }], loadProject: async () => { throw new Error('corrupt'); } };
+  const loadFails = await release.releaseQueued(copyQueue, [], releaseWith({ loadRepo: async () => brokenRepo }));
+  check('an unreadable project keeps the file and queues a retry', loadFails.results.join() === 'failed' && deleted.length === 0);
+
+  await relRepo.deleteProject(orig.document.id);
+  const nativeRefused = await release.releaseQueued(copyQueue, [], releaseWith({ deleteFile: async () => ({ ok: false }) }));
+  check('native delete returning ok:false is a failure, not a deletion', nativeRefused.results.join() === 'failed' && nativeRefused.retry.length === 1);
+  const nativeThrew = await release.releaseQueued(copyQueue, [], releaseWith({ deleteFile: async () => { throw new Error('EACCES'); } }));
+  check('native delete throwing is a failure, not a deletion', nativeThrew.results.join() === 'failed');
+  const retried = await release.releaseQueued(nativeThrew.retry, [], releaseWith());
+  check('a retry deletes the file once nothing references it', retried.results.join() === 'deleted' && retried.retry.length === 0 && deleted.join() === PRIVATE);
+
+  const relocated = { ...projectWith().media[0], source: '/data/user/0/com.pixelcut.editor/files/media/new.mp4', path: '' };
+  const afterRelocate = await release.releaseQueued([projectWith().media[0]], [relocated], (item) => item.source);
+  check('a relocated item releases the old file, not the new one', afterRelocate.results.join() === PRIVATE);
+
   console.log(`ANDROID PERSIST OK (${passed} checks)`);
 })().catch((error) => {
   console.error(error.stack || error.message);

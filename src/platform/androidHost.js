@@ -3,7 +3,8 @@
 
 import { Capacitor } from '@capacitor/core';
 import { planMainExport } from './exportPlan.js';
-import { mediaOwnedPath, playableUrl } from './mediaPath.js';
+import { playableUrl } from './mediaPath.js';
+import { releaseOwnedFile } from './mediaRelease.js';
 import { openProject } from './webHost.js';
 import {
   androidPersistenceNote,
@@ -73,19 +74,11 @@ export async function importMedia() {
 }
 
 // Duplicated projects share the same private file, so delete only when no saved project still uses it.
-export async function releaseMedia(item) {
-  const source = mediaOwnedPath(item) || (item && typeof item === 'object' ? item.source : '');
-  if (!source) return;
-  try {
-    const repo = await getProjectRepository();
-    for (const summary of await repo.listProjects()) {
-      const doc = await repo.loadProject(summary.id);
-      if ((doc.project?.media || []).some((media) => (mediaOwnedPath(media) || media?.source) === source)) return;
-    }
-  } catch {
-    return; // Cannot prove the file is unused: keeping it costs storage, deleting it could cost a video.
-  }
-  await native().deleteMedia({ source }).catch(() => {});
+export function releaseMedia(item) {
+  return releaseOwnedFile(item, {
+    loadRepo: getProjectRepository,
+    deleteFile: (source) => native().deleteMedia({ source }),
+  });
 }
 
 export function onAppClosing(callback) {
@@ -113,8 +106,6 @@ export async function relocateMedia(item) {
   const items = await importMedia();
   const picked = (items || []).find((entry) => entry && !entry.error);
   if (!picked) return null;
-  const previous = mediaOwnedPath(item) || item?.source;
-  if (previous && previous !== picked.source) native().deleteMedia({ source: previous }).catch(() => {});
   return { ...item, ...picked, id: item.id, missing: false };
 }
 
