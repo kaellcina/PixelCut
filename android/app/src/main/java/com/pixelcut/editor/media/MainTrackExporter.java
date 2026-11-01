@@ -213,7 +213,7 @@ public final class MainTrackExporter {
         if (evenMs < timelineMs - 1) even.addGap(C.msToUs(timelineMs - evenMs));
         if (oddMs < timelineMs - 1) odd.addGap(C.msToUs(timelineMs - oddMs));
         return new Composition.Builder(even.build(), odd.build())
-            .setVideoCompositorSettings(new TransitionCompositor(width, height, transitions))
+            .setVideoCompositorSettings(new TransitionCompositor(width, height, transitions, items))
             .build();
     }
 

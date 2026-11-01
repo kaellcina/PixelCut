@@ -119,6 +119,18 @@ public final class TransitionMath {
         return 0;
     }
 
+    /**
+     * Media3 draws sequence 0 on top. A gap in that sequence is a tiny black
+     * placeholder, not an empty overlay — hide unoccupied inputs between packed clips.
+     */
+    public static float idleSequenceAlpha(boolean occupied) {
+        return occupied ? 1f : 0f;
+    }
+
+    public static boolean occupies(int sequence, int inputId, long timeMs, long startMs, long endMs) {
+        return sequence == inputId && timeMs >= startMs && timeMs < endMs;
+    }
+
     public static float audioGain(long localUs, long durationUs, long fadeInUs, long fadeOutUs) {
         if (durationUs <= 0) return 1f;
         if (fadeInUs > 0 && localUs < fadeInUs) return clamp01(localUs / (float) fadeInUs);

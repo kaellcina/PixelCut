@@ -18,11 +18,17 @@ final class TransitionCompositor implements VideoCompositorSettings {
     private final int width;
     private final int height;
     private final JSONArray transitions;
+    private final JSONArray items;
 
     TransitionCompositor(int width, int height, JSONArray transitions) {
+        this(width, height, transitions, null);
+    }
+
+    TransitionCompositor(int width, int height, JSONArray transitions, JSONArray items) {
         this.width = width;
         this.height = height;
         this.transitions = transitions == null ? new JSONArray() : transitions;
+        this.items = items == null ? new JSONArray() : items;
     }
 
     @Override
@@ -33,7 +39,7 @@ final class TransitionCompositor implements VideoCompositorSettings {
     @Override
     public OverlaySettings getOverlaySettings(int inputId, long presentationTimeUs) {
         JSONObject active = activeTransition(presentationTimeUs);
-        float alpha = 1f;
+        float alpha;
         if (active != null) {
             long startUs = C.msToUs(active.optLong("startMs"));
             long durationUs = C.msToUs(active.optLong("durationMs"));
@@ -43,8 +49,28 @@ final class TransitionCompositor implements VideoCompositorSettings {
             alpha = inputId == 0
                 ? TransitionMath.primaryOverlayAlpha(type, progress, overlayIncoming)
                 : TransitionMath.secondaryOverlayAlpha(type, progress, overlayIncoming);
+        } else {
+            alpha = TransitionMath.idleSequenceAlpha(occupied(inputId, presentationTimeUs));
         }
         return new StaticOverlaySettings.Builder().setAlphaScale(alpha).build();
+    }
+
+    private boolean occupied(int inputId, long presentationTimeUs) {
+        long timeMs = presentationTimeUs / 1000L;
+        for (int i = 0; i < items.length(); i++) {
+            JSONObject spec = items.optJSONObject(i);
+            if (spec == null) continue;
+            if (TransitionMath.occupies(
+                spec.optInt("sequence", i % 2),
+                inputId,
+                timeMs,
+                spec.optLong("startMs"),
+                spec.optLong("endMs")
+            )) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private JSONObject activeTransition(long presentationTimeUs) {

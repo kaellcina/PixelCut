@@ -9,8 +9,8 @@ As tags anteriores permanecem no repositório. Não altere os anexos delas.
 | Campo | Valor |
 |---|---|
 | Arquivo | `PixelCut-Setup-0.1.0-beta.5.exe` |
-| SHA-256 | `DD83CCC767B29DF74E182E7C2235C2B6D297430057F268C1F2427EA66EACC537` |
-| Tamanho | 151 311 965 bytes |
+| SHA-256 | `CD7DCECB3B76B0F0644B1D50F019D9E8BF6ED47DBC6E2A624F6D6D114BB1D48C` |
+| Tamanho | 151 311 918 bytes |
 | App | Electron 44.10.0, x64 |
 | FFmpeg | PixelCut n6.1.1 (`050577AF…` / `0BB9D300…`) |
 | Assinatura | NotSigned |
@@ -59,8 +59,8 @@ Notas do produto: [ANDROID.md](ANDROID.md). Assinatura: [ANDROID_SIGNING.md](AND
 | Campo | Valor |
 |---|---|
 | Nome | `PixelCut-Android-0.1.0-beta.5.apk` |
-| Bytes | 6 546 857 |
-| SHA-256 | `C6692D5F9B44586336CE4EDE383633DC1211CAE5ED8DBA8F22AA85E4DF7DFD0A` |
+| Bytes | 6 547 137 |
+| SHA-256 | `1381919E9A32EF20EDE26F76F81770C538F23358145BDC7A133618DE07F12DCB` |
 | Assinatura | v2, `apksigner verify` OK. Pacote `com.pixelcut.editor`, versão `0.1.0-beta.5`, `versionCode` 11, minSdk 24. Mesma keystore da beta.1 (`48e79a8f…`). |
 
 A beta.1 (`PixelCut-Android-0.1.0-beta.1.apk`, SHA-256 `1FE4A4B01B212AB2E7D4BCA7AE73D72568E66DE5396E92FDE5707723BC054F18`) e a beta.2 (`EA6CAA2EEEADA4C11B21B8CC253FAEEC20CAECF0AA91736E38ED527ACCB1D606`) **permanecem disponíveis**. Não altere os anexos daquelas versões.

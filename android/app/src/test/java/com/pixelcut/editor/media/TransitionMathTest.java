@@ -73,6 +73,16 @@ public class TransitionMathTest {
     }
 
     @Test
+    public void unusedSequenceIsHiddenBetweenPackedClips() {
+        assertEquals(1f, TransitionMath.idleSequenceAlpha(true), 0.001f);
+        assertEquals(0f, TransitionMath.idleSequenceAlpha(false), 0.001f);
+        assertTrue(TransitionMath.occupies(0, 0, 500, 0, 2000));
+        assertFalse(TransitionMath.occupies(0, 0, 2500, 0, 2000));
+        assertTrue(TransitionMath.occupies(1, 1, 2500, 1500, 3500));
+        assertFalse(TransitionMath.occupies(0, 1, 2500, 0, 2000));
+    }
+
+    @Test
     public void fadeThroughHidesPrimaryAfterMidpoint() {
         assertEquals(1f, TransitionMath.primaryOverlayAlpha("fadeblack", 0.25f, true), 0.001f);
         assertEquals(0f, TransitionMath.primaryOverlayAlpha("fadeblack", 0.75f, true), 0.001f);
