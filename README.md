@@ -95,7 +95,7 @@ Não use instaladores antigos (`PixelCut-Setup-0.1.0.exe`, `…-electron44.exe`,
    Get-FileHash .\PixelCut-Android-0.1.0-beta.5.apk -Algorithm SHA256
    ```
 
-3. Se já tiver uma beta anterior, **não** desinstale: instale por cima (`versionCode` 10)
+3. Se já tiver uma beta anterior, **não** desinstale: instale por cima (`versionCode` 11)
 4. Permita fontes desconhecidas e abra o APK
 5. Lembrete: a exportação no Android inclui **só a faixa principal**
 

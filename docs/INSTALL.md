@@ -52,7 +52,7 @@ O instalador mostra MIT (código original do PixelCut) e GPL-2.0-or-later (FFmpe
 
 Notas do produto: [ANDROID.md](ANDROID.md). Assinatura: [ANDROID_SIGNING.md](ANDROID_SIGNING.md).
 
-**Mínimo:** Android 7.0 (API 24). `applicationId` `com.pixelcut.editor`. `versionCode` 10, `versionName` `0.1.0-beta.5`.
+**Mínimo:** Android 7.0 (API 24). `applicationId` `com.pixelcut.editor`. `versionCode` 11, `versionName` `0.1.0-beta.5`.
 
 ### Build assinado (0.1.0-beta.5)
 

@@ -17,7 +17,8 @@ O código original do editor é MIT, Copyright (c) 2026 Kaell Soares Calacina. N
 - **Transições na exportação Android:** dissolver, fade preto, flash (fade branco) e wipe ←/→/↑/↓ passam a ser gravados no MP4 da faixa principal (Media3, duas sequências + compositor). Testado no Galaxy A54.
 - **Exportação Windows:** cortes secos e transições (`xfade` / `acrossfade`) no FFmpeg, com duração empacotada (soma dos clipes menos as sobreposições).
 - **Estabilidade:** preview nas pontas do corte, desfazer/refazer e autosave sem sobrescrever o projeto com um estado vazio; diálogo de exportação Android só pede confirmação quando a transição realmente não entra no arquivo.
-- **Identidade:** Windows e Android saem juntos como `0.1.0-beta.5` (`versionCode` 10 no Android, acima da build de teste 9). Mesma chave das betas anteriores. O instalador NSIS **não** apaga `%AppData%\PixelCut` na desinstalação.
+- **Mídia e projetos (JosiasAz, PR #1):** remover um vídeo da biblioteca já não apaga o arquivo na hora — o arquivo só é liberado ao sair do projeto, depois de salvar. Duplicar um projeto no Android deixa de apagar o vídeo do original. O autosave não marca “Salvo” quando ainda há um salvamento na fila. A fila de liberação distingue `deleted`, `in-use` e `failed`.
+- **Identidade:** Windows e Android saem juntos como `0.1.0-beta.5` (`versionCode` 11 no Android). Mesma chave das betas anteriores. O instalador NSIS **não** apaga `%AppData%\PixelCut` na desinstalação.
 
 As releases `v0.1.0-beta.1`, `v0.1.0-beta.2` e `v0.1.0-beta.4` **permanecem disponíveis**. Os anexos delas não foram alterados.
 
@@ -25,8 +26,8 @@ As releases `v0.1.0-beta.1`, `v0.1.0-beta.2` e `v0.1.0-beta.4` **permanecem disp
 
 | Arquivo | Plataforma | SHA-256 | Bytes |
 |---|---|---|---|
-| `PixelCut-Setup-0.1.0-beta.5.exe` | Windows 10/11 x64 | `57923AE1ED3B0FF1AB5DD274948907ADE4CAF9C0E5F9A43A626A851DCDD681A1` | 151 311 633 |
-| `PixelCut-Android-0.1.0-beta.5.apk` | Android 7+ (`com.pixelcut.editor`) | `AE999F2D6AD412EDE6B65172AFF75822F8205B16F0B78B46E4CC9901112D74A3` | 6 546 577 |
+| `PixelCut-Setup-0.1.0-beta.5.exe` | Windows 10/11 x64 | *recalcular após o rebuild com o PR #1* | *recalcular* |
+| `PixelCut-Android-0.1.0-beta.5.apk` | Android 7+ (`com.pixelcut.editor`) | *recalcular após o rebuild com o PR #1* | *recalcular* |
 | `PixelCut-ffmpeg-n6.1.1-corresponding-source.zip` | Fontes do FFmpeg/FFprobe enviados no Windows | `27187E48A173F4096BDE53B2B9265C2C2703BA31F9DDD53F12B6BF27D1FB52F8` | 42 315 883 |
 
 Electron 44.10.0. O instalador Windows **não** tem Authenticode — o SmartScreen pode avisar. Isso é esperado.
@@ -75,6 +76,10 @@ O volume da faixa principal diferente de 100% ainda não é aplicado no Android 
   - ffprobe `0BB9D300815A59AA26B7F8494D5A4BE84F6803FCBC069486FADF63A62AE8668E`
 - Outros componentes: `THIRD_PARTY_NOTICES.md`
 - Pacote para reconstruir o par enviado: `PixelCut-ffmpeg-n6.1.1-corresponding-source.zip` (mesmo hash das releases anteriores; o FFmpeg do Windows não mudou)
+
+## Agradecimento
+
+Obrigado a **JosiasAz** (Josias Azevedo) pelas correções de preservação de mídia no PR #1 — em especial por evitar a perda de vídeos ao desfazer uma remoção, ao duplicar projetos no Android e no autosave. A autoria desses commits permanece a dele.
 
 ## Bugs
 

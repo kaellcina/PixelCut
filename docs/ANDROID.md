@@ -2,7 +2,7 @@
 
 Sideload. Isto não é um anúncio da Play Store.
 
-A `v0.1.0-beta.5` atualiza o APK (`versionCode` 10, mesma chave) **e** o instalador Windows. **Ainda não publicada no GitHub.** As tags anteriores permanecem; os anexos delas não foram alterados.
+A `v0.1.0-beta.5` atualiza o APK (`versionCode` 11, mesma chave) **e** o instalador Windows. **Ainda não publicada no GitHub.** As tags anteriores permanecem; os anexos delas não foram alterados.
 
 ## O que esta versão traz no celular
 
