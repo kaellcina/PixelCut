@@ -28,7 +28,7 @@ install. Play App Signing is not used for this GitHub sideload beta.
 
 ```powershell
 npm run android:release
-apksigner verify --verbose --print-certs android\app\build\outputs\apk\release\PixelCut-Android-0.1.0-beta.4.apk
+apksigner verify --verbose --print-certs android\app\build\outputs\apk\release\PixelCut-Android-0.1.0-beta.5.apk
 ```
 
 ## If you ever need a new keystore (do not do this for the current beta)

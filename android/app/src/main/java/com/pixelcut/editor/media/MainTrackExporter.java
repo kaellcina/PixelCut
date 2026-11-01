@@ -254,20 +254,24 @@ public final class MainTrackExporter {
         List<Effect> video = new ArrayList<>();
         video.add(Presentation.createForWidthAndHeight(width, height, Presentation.LAYOUT_SCALE_TO_FIT));
         long durationUs = C.msToUs(Math.max(1, spec.optLong("durationMs")));
+        long originUs = C.msToUs(Math.max(0, spec.optLong("startMs")));
         long fadeInUs = C.msToUs(spec.optLong("fadeInMs", spec.optLong("overlapMs")));
         long fadeOutUs = C.msToUs(spec.optLong("fadeOutMs"));
         String fadeInType = spec.optString("fadeInType", spec.optString("transition"));
         String fadeOutType = spec.optString("fadeOutType");
         if (TransitionRgbMatrix.needed(fadeInType, fadeInUs, fadeOutType, fadeOutUs)) {
-            video.add(new TransitionRgbMatrix(fadeInType, fadeInUs, fadeOutType, fadeOutUs, durationUs));
+            video.add(new TransitionRgbMatrix(fadeInType, fadeInUs, fadeOutType, fadeOutUs, durationUs, originUs));
         }
-        if (spec.optInt("sequence", 0) == 1) {
+        // DefaultVideoCompositor draws the first sequence on top. Punch wipe holes there
+        // so the other clip shows through; the bottom sequence stays opaque.
+        if (spec.optInt("sequence", 0) == 0) {
             List<TransitionWipeEffect.Window> wipes = new ArrayList<>();
             if (TransitionMath.isWipe(fadeInType) && fadeInUs > 0) {
-                wipes.add(new TransitionWipeEffect.Window(fadeInType, 0, fadeInUs, true));
+                wipes.add(new TransitionWipeEffect.Window(fadeInType, originUs, originUs + fadeInUs, true));
             }
             if (TransitionMath.isWipe(fadeOutType) && fadeOutUs > 0) {
-                wipes.add(new TransitionWipeEffect.Window(fadeOutType, Math.max(0, durationUs - fadeOutUs), durationUs, false));
+                long start = originUs + Math.max(0, durationUs - fadeOutUs);
+                wipes.add(new TransitionWipeEffect.Window(fadeOutType, start, originUs + durationUs, false));
             }
             if (!wipes.isEmpty()) video.add(new TransitionWipeEffect(wipes));
         }

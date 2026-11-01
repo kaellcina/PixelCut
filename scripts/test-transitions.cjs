@@ -202,6 +202,11 @@ function graphOf(project) {
     && androidFade.transitions.length === 2
     && near(androidFade.durationMs / 1000, 5, 0.02)
   ));
+  check('encoded fade and wipe no longer warn as hard cuts', (
+    !androidFade.warnings.includes(plan.EXPORT_LIMITS.wipe)
+    && !androidFade.warnings.includes(plan.EXPORT_LIMITS.fadeThrough)
+    && plan.androidVisualTransitionWarnings(androidFade.warnings).length === 0
+  ));
   const androidSlide = plan.planMainExport({
     ...mixed,
     media: mixed.media.map((item) => ({

@@ -13,6 +13,14 @@ public final class TransitionMath {
         return value;
     }
 
+    /**
+     * Media3 item effects see sequence timestamps, including the leading gap.
+     * Subtract the composition start so fade/wipe windows stay clip-local.
+     */
+    public static long clipLocalUs(long presentationTimeUs, long originUs) {
+        return presentationTimeUs - Math.max(0L, originUs);
+    }
+
     public static boolean isWipe(String type) {
         return "wipeleft".equals(type)
             || "wiperight".equals(type)
@@ -34,6 +42,23 @@ public final class TransitionMath {
             return p < 0.5f ? 1f : 0f;
         }
         return 1f;
+    }
+
+    /**
+     * Alpha for the first Media3 sequence. DefaultVideoCompositor draws that source on top,
+     * so the outgoing clip has to fade here or the incoming clip stays hidden underneath.
+     */
+    public static float primaryOverlayAlpha(String type, float progress, boolean overlayIncoming) {
+        return overlayAlpha(type, progress, !overlayIncoming);
+    }
+
+    /**
+     * Alpha for the second sequence, drawn underneath. Dissolve keeps it opaque so Porter-Duff
+     * over of the fading primary is a linear mix. Fade-through uses the incoming switch.
+     */
+    public static float secondaryOverlayAlpha(String type, float progress, boolean overlayIncoming) {
+        if ("dissolve".equals(type)) return 1f;
+        return overlayAlpha(type, progress, overlayIncoming);
     }
 
     /**

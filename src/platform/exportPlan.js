@@ -20,6 +20,8 @@ const ENCODED = new Set(ENCODED_TRANSITIONS);
 
 export const EXPORT_LIMITS = {
   transition: 'Esta transição sai como dissolver no arquivo Android. A prévia no editor continua com o efeito original.',
+  wipe: 'Wipe ←/→/↑/↓ sai como corte seco no arquivo Android. A prévia no editor continua com o efeito original.',
+  fadeThrough: 'Fade preto e Flash alteram o clipe de saída, mas o clipe de entrada ainda aparece de uma vez. A prévia no editor continua com o efeito original.',
   effect: 'Os efeitos visuais da faixa principal não entram no arquivo.',
   zoom: 'O zoom não entra no arquivo.',
   chroma: 'O chroma key não entra no arquivo.',
@@ -162,4 +164,9 @@ export function planMainExport(project) {
     timelineMs,
     warnings: [...warnings],
   };
+}
+
+/** Limitations that must be shown before Android export starts — not only after the MP4 exists. */
+export function androidVisualTransitionWarnings(warnings = []) {
+  return warnings.filter((note) => note === EXPORT_LIMITS.wipe || note === EXPORT_LIMITS.fadeThrough);
 }

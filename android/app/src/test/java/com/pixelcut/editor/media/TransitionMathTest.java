@@ -57,4 +57,26 @@ public class TransitionMathTest {
         assertEquals(1f, TransitionMath.overlayAlpha(null, 0.5f, true), 0.001f);
         assertTrue(TransitionMath.wipeVisible("dissolve", 0.2f, 0.2f, 0.5f, true));
     }
+
+    @Test
+    public void primarySequenceFadesOutOnTopDuringDissolve() {
+        assertEquals(1f, TransitionMath.primaryOverlayAlpha("dissolve", 0f, true), 0.001f);
+        assertEquals(0.5f, TransitionMath.primaryOverlayAlpha("dissolve", 0.5f, true), 0.001f);
+        assertEquals(0f, TransitionMath.primaryOverlayAlpha("dissolve", 1f, true), 0.001f);
+        assertEquals(1f, TransitionMath.secondaryOverlayAlpha("dissolve", 0.5f, true), 0.001f);
+    }
+
+    @Test
+    public void clipLocalTimeSubtractsTheSequenceGap() {
+        assertEquals(250_000L, TransitionMath.clipLocalUs(1_750_000L, 1_500_000L));
+        assertEquals(1_700_000L, TransitionMath.clipLocalUs(1_700_000L, 0L));
+    }
+
+    @Test
+    public void fadeThroughHidesPrimaryAfterMidpoint() {
+        assertEquals(1f, TransitionMath.primaryOverlayAlpha("fadeblack", 0.25f, true), 0.001f);
+        assertEquals(0f, TransitionMath.primaryOverlayAlpha("fadeblack", 0.75f, true), 0.001f);
+        assertEquals(0f, TransitionMath.secondaryOverlayAlpha("fadeblack", 0.25f, true), 0.001f);
+        assertEquals(1f, TransitionMath.secondaryOverlayAlpha("fadeblack", 0.75f, true), 0.001f);
+    }
 }

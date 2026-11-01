@@ -1,18 +1,16 @@
 # Instalar o PixelCut
 
-A versão atual é a **`v0.1.0-beta.4`**. Downloads:
+A versão desta árvore é a **`v0.1.0-beta.5`**. A publicação no GitHub **ainda não foi feita**. A última Release pública é a [`v0.1.0-beta.4`](https://github.com/kaellcina/PixelCut/releases/tag/v0.1.0-beta.4).
 
-[https://github.com/kaellcina/PixelCut/releases/tag/v0.1.0-beta.4](https://github.com/kaellcina/PixelCut/releases/tag/v0.1.0-beta.4)
-
-As tags `v0.1.0-beta.1` e `v0.1.0-beta.2` permanecem no repositório. Não altere os anexos delas.
+As tags anteriores permanecem no repositório. Não altere os anexos delas.
 
 ## Instalador Windows (EXE)
 
 | Campo | Valor |
 |---|---|
-| Arquivo | `PixelCut-Setup-0.1.0-beta.4.exe` |
-| SHA-256 | `2A842E13DF1FEA905C454F49E31E1B6FC1CF4F5AC2AB8E0AC45D004A5C847C80` |
-| Tamanho | 151 309 481 bytes |
+| Arquivo | `PixelCut-Setup-0.1.0-beta.5.exe` |
+| SHA-256 | `57923AE1ED3B0FF1AB5DD274948907ADE4CAF9C0E5F9A43A626A851DCDD681A1` |
+| Tamanho | 151 311 633 bytes |
 | App | Electron 44.10.0, x64 |
 | FFmpeg | PixelCut n6.1.1 (`050577AF…` / `0BB9D300…`) |
 | Assinatura | NotSigned |
@@ -25,11 +23,11 @@ Não use instaladores locais antigos como download da beta pública:
 
 ### Passos
 
-1. No Windows 10 ou 11 (64 bits), baixe `PixelCut-Setup-0.1.0-beta.4.exe`.
+1. No Windows 10 ou 11 (64 bits), use `PixelCut-Setup-0.1.0-beta.5.exe`.
 2. Confira o SHA-256:
 
    ```powershell
-   Get-FileHash .\PixelCut-Setup-0.1.0-beta.4.exe -Algorithm SHA256
+   Get-FileHash .\PixelCut-Setup-0.1.0-beta.5.exe -Algorithm SHA256
    ```
 
 3. Feche o PixelCut se já estiver aberto.
@@ -47,23 +45,23 @@ O instalador mostra MIT (código original do PixelCut) e GPL-2.0-or-later (FFmpe
 ### Requisitos mínimos (Windows)
 
 - Windows 10 ou Windows 11, 64 bits
-- Espaço em disco para o app (o EXE tem 151 309 481 bytes) e para as suas mídias
+- Espaço em disco para o app (o EXE tem 151 311 633 bytes) e para as suas mídias
 - Internet só para Google Fonts no **preview de texto**; a exportação não precisa de rede
 
 ## APK Android
 
 Notas do produto: [ANDROID.md](ANDROID.md). Assinatura: [ANDROID_SIGNING.md](ANDROID_SIGNING.md).
 
-**Mínimo:** Android 7.0 (API 24). `applicationId` `com.pixelcut.editor`. `versionCode` 4, `versionName` `0.1.0-beta.4`.
+**Mínimo:** Android 7.0 (API 24). `applicationId` `com.pixelcut.editor`. `versionCode` 10, `versionName` `0.1.0-beta.5`.
 
-### Build assinado (0.1.0-beta.4)
+### Build assinado (0.1.0-beta.5)
 
 | Campo | Valor |
 |---|---|
-| Nome | `PixelCut-Android-0.1.0-beta.4.apk` |
-| Bytes | 6 539 581 |
-| SHA-256 | `CB2CD29323A40FD160694909C0F6D307DCAE4CF6D0CD75C0D1AAC8BF9DC7ADDB` |
-| Assinatura | v2, `apksigner verify` OK. Pacote `com.pixelcut.editor`, versão `0.1.0-beta.4`, `versionCode` 4, minSdk 24. Mesma keystore da beta.1 (`48e79a8f…`). |
+| Nome | `PixelCut-Android-0.1.0-beta.5.apk` |
+| Bytes | 6 546 577 |
+| SHA-256 | `AE999F2D6AD412EDE6B65172AFF75822F8205B16F0B78B46E4CC9901112D74A3` |
+| Assinatura | v2, `apksigner verify` OK. Pacote `com.pixelcut.editor`, versão `0.1.0-beta.5`, `versionCode` 10, minSdk 24. Mesma keystore da beta.1 (`48e79a8f…`). |
 
 A beta.1 (`PixelCut-Android-0.1.0-beta.1.apk`, SHA-256 `1FE4A4B01B212AB2E7D4BCA7AE73D72568E66DE5396E92FDE5707723BC054F18`) e a beta.2 (`EA6CAA2EEEADA4C11B21B8CC253FAEEC20CAECF0AA91736E38ED527ACCB1D606`) **permanecem disponíveis**. Não altere os anexos daquelas versões.
 
@@ -72,17 +70,17 @@ A beta.1 (`PixelCut-Android-0.1.0-beta.1.apk`, SHA-256 `1FE4A4B01B212AB2E7D4BCA7
 ### Atualizar de uma beta anterior (recomendado)
 
 1. **Não** desinstale o PixelCut e **não** limpe os dados.
-2. Permita fontes desconhecidas e abra `PixelCut-Android-0.1.0-beta.4.apk`.
-3. Confira o SHA-256 da beta.4 acima.
+2. Permita fontes desconhecidas e abra `PixelCut-Android-0.1.0-beta.5.apk`.
+3. Confira o SHA-256 da beta.5 acima.
 4. Os projetos das betas anteriores devem continuar no aparelho.
 
 ### Instalação nova (sideload)
 
 1. Desinstale um PixelCut de depuração se a instalação falhar por assinatura diferente (`INSTALL_FAILED_UPDATE_INCOMPATIBLE`). Isso apaga os projetos privados do app.
 2. Permita instalar de fontes desconhecidas no navegador ou no app Arquivos.
-3. Abra o APK da beta.4 e confira o SHA-256.
+3. Abra o APK da beta.5 e confira o SHA-256.
 4. Avisos de fonte desconhecida / Play Protect são esperados num sideload do GitHub.
-5. A exportação ainda grava **somente a faixa principal de vídeo**. Sobreposição, títulos, transições, chroma, efeitos do catálogo, efeitos de voz e uma faixa de música separada ficam de fora.
+5. A exportação ainda grava **somente a faixa principal de vídeo**. Dissolver, fade preto, flash e wipe entram nessa faixa. Sobreposição, títulos, chroma, efeitos do catálogo, efeitos de voz, volume diferente de 100% e uma faixa de música separada ficam de fora.
 
 ## Fontes correspondentes (FFmpeg)
 

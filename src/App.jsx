@@ -14,6 +14,7 @@ import ExportDialog from './components/ExportDialog.jsx';
 import HomeScreen from './components/HomeScreen.jsx';
 import MissingMediaDialog from './components/MissingMediaDialog.jsx';
 import { platform, prefersMobileLayout } from './platform/index.js';
+import { androidVisualTransitionWarnings, planMainExport } from './platform/exportPlan.js';
 import { readAudioScrubPref, writeAudioScrubPref } from './audioScrub.js';
 import pixelcutIcon from '../assets/icon.png';
 
@@ -525,11 +526,23 @@ export default function App() {
     announce('Mídia localizada');
   };
 
-  const startExport = async () => {
+  const startExport = async (confirmed = false) => {
     if (!project.videoClips.length) return alert('Adicione um vídeo à faixa principal antes de exportar.');
     setPlaying(false);
-    setExporting({ progress: 0 });
-    const off = platform.onExportProgress((progress) => setExporting((current) => current && { ...current, progress }));
+    let preview;
+    try {
+      preview = planMainExport(project);
+    } catch (error) {
+      setExporting({ error: error.message });
+      return;
+    }
+    const visual = androidVisualTransitionWarnings(preview.warnings);
+    if (confirmed !== true && visual.length && platform.kind() === 'android') {
+      setExporting({ confirm: true, warnings: visual, progress: 0 });
+      return;
+    }
+    setExporting({ progress: 0, warnings: preview.warnings });
+    const off = platform.onExportProgress((progress) => setExporting((current) => current && !current.done && !current.error && !current.confirm ? { ...current, progress } : current));
     try {
       const result = await platform.exportVideo(project);
       if (result?.canceled) return setExporting(null);
@@ -726,7 +739,7 @@ export default function App() {
             <span aria-hidden="true">↷</span>
           </button>
           {compact && !mobile && <button className="icon-button" onClick={() => setDrawer(drawer === 'inspector' ? null : 'inspector')} title="Propriedades">⚙</button>}
-          <button className="primary export-button" onClick={startExport}>Exportar</button>
+          <button className="primary export-button" onClick={() => startExport()}>Exportar</button>
           {mobile && <button className="icon-button" aria-expanded={menuOpen} aria-haspopup="menu" onClick={() => setMenuOpen((open) => !open)} title="Mais ações">⋯</button>}
         </div>
         {mobile && menuOpen && <button className="drawer-scrim menu-scrim" onClick={() => setMenuOpen(false)} aria-label="Fechar menu" />}
@@ -842,6 +855,7 @@ export default function App() {
       {toast && <div className="toast">{toast}</div>}
       <MissingMediaDialog missing={missing} onRelocate={relocateMissing} onContinue={() => setMissing([])} />
       {exporting && <ExportDialog state={exporting} output={`${project.width}×${project.height} · ${project.fps} fps`} onCancel={() => platform.cancelExport()}
+        onConfirm={() => startExport(true)}
         onClose={() => setExporting(null)}
         revealLabel={platform.kind() === 'android' ? 'Abrir vídeo' : 'Mostrar na pasta'}
         onShow={platform.canReveal() || platform.kind() === 'android' ? () => {

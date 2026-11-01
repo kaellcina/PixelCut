@@ -1,6 +1,6 @@
 {
   "name": "pixelcut-video-editor",
-  "version": "0.1.0-beta.4",
+  "version": "0.1.0-beta.5",
   "description": "PixelCut — free public-beta video editor for Windows (Electron + FFmpeg) and Android (Capacitor + Media3)",
   "author": "Kaell Soares Calacina",
   "main": "electron/main.cjs",

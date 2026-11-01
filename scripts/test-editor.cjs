@@ -451,6 +451,9 @@ async function testAndroidPlan(store) {
   check('unsupported types fall back to dissolve and disclose it', slide.items[1].transition === 'dissolve' && slide.warnings.includes(plan.EXPORT_LIMITS.transition));
   const wipe = plan.planMainExport({ ...project, videoClips: [first, clip('c2', 'b', { in: 1, out: 3, transitionIn: { type: 'wipeleft', duration: 0.4 } })] });
   check('wipe is encoded with packed duration', wipe.items[1].transition === 'wipeleft' && wipe.composeOverlaps === true && !wipe.warnings.includes(plan.EXPORT_LIMITS.transition));
+  const fade = plan.planMainExport({ ...project, videoClips: [first, clip('c2', 'b', { in: 1, out: 3, transitionIn: { type: 'fadeblack', duration: 0.4 } })] });
+  check('encoded wipe and fade do not warn as missing', !wipe.warnings.includes(plan.EXPORT_LIMITS.wipe) && !fade.warnings.includes(plan.EXPORT_LIMITS.fadeThrough));
+  check('dissolve does not warn as a hard cut', !exported.warnings.includes(plan.EXPORT_LIMITS.wipe) && !exported.warnings.includes(plan.EXPORT_LIMITS.fadeThrough));
   check('the plan keeps the private file path', exported.items[0].source === source('a') && exported.items[0].keepAudio === true);
   check('output size matches an even editor frame', exported.width === 1278 && exported.height === 718 && exported.fps === 30);
 

@@ -40,3 +40,4 @@ nsis:
   createStartMenuShortcut: true
   shortcutName: PixelCut
   license: assets/installer-license.txt
+  deleteAppDataOnUninstall: false

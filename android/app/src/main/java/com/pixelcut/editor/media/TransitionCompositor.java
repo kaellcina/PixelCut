@@ -6,6 +6,7 @@ import androidx.media3.common.OverlaySettings;
 import androidx.media3.common.VideoCompositorSettings;
 import androidx.media3.common.util.Size;
 import androidx.media3.common.util.UnstableApi;
+import androidx.media3.effect.StaticOverlaySettings;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -31,26 +32,19 @@ final class TransitionCompositor implements VideoCompositorSettings {
 
     @Override
     public OverlaySettings getOverlaySettings(int inputId, long presentationTimeUs) {
-        if (inputId == 0) return VideoCompositorSettings.DEFAULT.getOverlaySettings(inputId, presentationTimeUs);
         JSONObject active = activeTransition(presentationTimeUs);
         float alpha = 1f;
         if (active != null) {
             long startUs = C.msToUs(active.optLong("startMs"));
             long durationUs = C.msToUs(active.optLong("durationMs"));
             float progress = durationUs <= 0 ? 1f : (presentationTimeUs - startUs) / (float) durationUs;
-            alpha = TransitionMath.overlayAlpha(
-                active.optString("type"),
-                progress,
-                active.optBoolean("overlayIncoming", true)
-            );
+            String type = active.optString("type");
+            boolean overlayIncoming = active.optBoolean("overlayIncoming", true);
+            alpha = inputId == 0
+                ? TransitionMath.primaryOverlayAlpha(type, progress, overlayIncoming)
+                : TransitionMath.secondaryOverlayAlpha(type, progress, overlayIncoming);
         }
-        final float overlayAlpha = alpha;
-        return new OverlaySettings() {
-            @Override
-            public float getAlphaScale() {
-                return overlayAlpha;
-            }
-        };
+        return new StaticOverlaySettings.Builder().setAlphaScale(alpha).build();
     }
 
     private JSONObject activeTransition(long presentationTimeUs) {
