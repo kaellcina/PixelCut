@@ -1,17 +1,17 @@
 # Checklist before a public distribution — PixelCut
 
-**Fase 34 / v0.1.0-beta.5 (01/11/2026):** Windows installer and signed Android APK generated locally. **Not published.** No push, tag, merge or GitHub Release until the rights holder approves.
+**Fase 35 / v0.1.0-beta.5 (01/11/2026):** PR #1 integrated on `integrate/pr1-beta.5`. Windows installer and signed Android APK rebuilt locally. **Not published.** No push, tag, merge or GitHub Release until the rights holder approves. PR #1 remains open.
 
 - Editor license: **MIT**, Copyright (c) 2026 Kaell Soares Calacina. `package.json` `"license": "MIT"`.
 - FFmpeg/FFprobe: PixelCut n6.1.1, **GPL-2.0-or-later** (unchanged binaries).
 - Public repository: **https://github.com/kaellcina/PixelCut**
 - Last published tag: `v0.1.0-beta.4`. Proposed next tag: `v0.1.0-beta.5` (do not create until authorized).
 - Windows installer: `PixelCut/release/PixelCut-Setup-0.1.0-beta.5.exe`  
-  SHA-256 `57923AE1ED3B0FF1AB5DD274948907ADE4CAF9C0E5F9A43A626A851DCDD681A1`  
-  151 311 633 bytes. NotSigned (approved for this beta). NSIS `deleteAppDataOnUninstall: false`.
+  SHA-256 `DD83CCC767B29DF74E182E7C2235C2B6D297430057F268C1F2427EA66EACC537`  
+  151 311 965 bytes. NotSigned (approved for this beta). NSIS `deleteAppDataOnUninstall: false`.
 - Android APK: `%LOCALAPPDATA%\PixelCut\staging\PixelCut-Android-0.1.0-beta.5.apk`  
-  SHA-256 `AE999F2D6AD412EDE6B65172AFF75822F8205B16F0B78B46E4CC9901112D74A3`  
-  6 546 577 bytes. Signed v2, `versionCode` 10, `versionName` `0.1.0-beta.5`, same certificate as beta.1 (`48e79a8f…`).
+  SHA-256 `C6692D5F9B44586336CE4EDE383633DC1211CAE5ED8DBA8F22AA85E4DF7DFD0A`  
+  6 546 857 bytes. Signed v2, `versionCode` 11, `versionName` `0.1.0-beta.5`, same certificate as beta.1 (`48e79a8f…`).
 - FFmpeg corresponding-source zip (not in git): `PixelCut-distribuicao/third-party/ffmpeg/PixelCut-ffmpeg-n6.1.1-corresponding-source.zip`  
   SHA-256 `27187E48A173F4096BDE53B2B9265C2C2703BA31F9DDD53F12B6BF27D1FB52F8`  
   42 315 883 bytes. Attach to the same GitHub Release as the Windows installer.
@@ -29,7 +29,7 @@
 
 ## Before an APK goes on GitHub Releases
 
-- [x] Signed APK: SHA-256 `AE999F2D6AD412EDE6B65172AFF75822F8205B16F0B78B46E4CC9901112D74A3` (6 546 577 B).
+- [x] Signed APK: SHA-256 `C6692D5F9B44586336CE4EDE383633DC1211CAE5ED8DBA8F22AA85E4DF7DFD0A` (6 546 857 B).
 - [x] Release keystore outside git (`%LOCALAPPDATA%\PixelCut\signing\`). Same key as beta.1.
 - [x] Policy: never attach `app-debug.apk`.
 - [x] Do not replace previous staging APKs (`…-beta.1.apk` … `…-beta.4.apk`).

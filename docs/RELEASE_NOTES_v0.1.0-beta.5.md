@@ -26,8 +26,8 @@ As releases `v0.1.0-beta.1`, `v0.1.0-beta.2` e `v0.1.0-beta.4` **permanecem disp
 
 | Arquivo | Plataforma | SHA-256 | Bytes |
 |---|---|---|---|
-| `PixelCut-Setup-0.1.0-beta.5.exe` | Windows 10/11 x64 | *recalcular após o rebuild com o PR #1* | *recalcular* |
-| `PixelCut-Android-0.1.0-beta.5.apk` | Android 7+ (`com.pixelcut.editor`) | *recalcular após o rebuild com o PR #1* | *recalcular* |
+| `PixelCut-Setup-0.1.0-beta.5.exe` | Windows 10/11 x64 | `DD83CCC767B29DF74E182E7C2235C2B6D297430057F268C1F2427EA66EACC537` | 151 311 965 |
+| `PixelCut-Android-0.1.0-beta.5.apk` | Android 7+ (`com.pixelcut.editor`) | `C6692D5F9B44586336CE4EDE383633DC1211CAE5ED8DBA8F22AA85E4DF7DFD0A` | 6 546 857 |
 | `PixelCut-ffmpeg-n6.1.1-corresponding-source.zip` | Fontes do FFmpeg/FFprobe enviados no Windows | `27187E48A173F4096BDE53B2B9265C2C2703BA31F9DDD53F12B6BF27D1FB52F8` | 42 315 883 |
 
 Electron 44.10.0. O instalador Windows **não** tem Authenticode — o SmartScreen pode avisar. Isso é esperado.
@@ -56,7 +56,7 @@ Não use `PixelCut-Setup-0.1.0.exe`, `PixelCut-Setup-0.1.0-electron44.exe`, `Pix
    Get-FileHash .\PixelCut-Android-0.1.0-beta.5.apk -Algorithm SHA256
    ```
 
-3. **Não** desinstale e **não** limpe os dados se já usa uma beta anterior — instale por cima (`versionCode` 10)
+3. **Não** desinstale e **não** limpe os dados se já usa uma beta anterior — instale por cima (`versionCode` 11)
 4. Permita fontes desconhecidas e abra o APK
 5. A exportação Android grava **somente a faixa principal**. Dissolver, fade preto, flash e wipe entram no MP4 dessa faixa. Sobreposições, textos, chroma, efeitos do catálogo, efeitos de voz, volume diferente de 100% e a faixa de música **não entram**.
 

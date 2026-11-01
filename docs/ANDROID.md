@@ -37,7 +37,7 @@ A exportação Android grava **somente a faixa principal de vídeo**: corte, seq
 
 1. **Não** desinstale. **Não** limpe os dados do aplicativo.
 2. Instale `PixelCut-Android-0.1.0-beta.5.apk` por cima (`adb install -r` ou o instalador de APK).
-3. Confira o SHA-256 `AE999F2D6AD412EDE6B65172AFF75822F8205B16F0B78B46E4CC9901112D74A3`.
+3. Confira o SHA-256 `C6692D5F9B44586336CE4EDE383633DC1211CAE5ED8DBA8F22AA85E4DF7DFD0A`.
 4. Abra um projeto antigo: o vídeo deve voltar à timeline.
 
 Se a instalação for recusada com `INSTALL_FAILED_UPDATE_INCOMPATIBLE`, existe um PixelCut assinado com **outra** chave (debug). Desinstalar nesse caso apaga os projetos privados.
@@ -49,9 +49,9 @@ Não instale `app-debug.apk`.
 | Campo | beta.5 (local) | beta.4 | beta.2 | beta.1 |
 |---|---|---|---|---|
 | Staging | `%LOCALAPPDATA%\PixelCut\staging\PixelCut-Android-0.1.0-beta.5.apk` | `…-beta.4.apk` | `…-beta.2.apk` | `…-beta.1.apk` |
-| SHA-256 | `AE999F2D6AD412EDE6B65172AFF75822F8205B16F0B78B46E4CC9901112D74A3` | `CB2CD29323A40FD160694909C0F6D307DCAE4CF6D0CD75C0D1AAC8BF9DC7ADDB` | `EA6CAA2EEEADA4C11B21B8CC253FAEEC20CAECF0AA91736E38ED527ACCB1D606` | `1FE4A4B01B212AB2E7D4BCA7AE73D72568E66DE5396E92FDE5707723BC054F18` |
-| Tamanho | 6 546 577 bytes | 6 539 581 bytes | 6 533 933 bytes | 6 267 993 bytes |
-| versionName / versionCode | `0.1.0-beta.5` / `10` | `0.1.0-beta.4` / `4` | `0.1.0-beta.2` / `2` | `0.1.0-beta.1` / `1` |
+| SHA-256 | `C6692D5F9B44586336CE4EDE383633DC1211CAE5ED8DBA8F22AA85E4DF7DFD0A` | `CB2CD29323A40FD160694909C0F6D307DCAE4CF6D0CD75C0D1AAC8BF9DC7ADDB` | `EA6CAA2EEEADA4C11B21B8CC253FAEEC20CAECF0AA91736E38ED527ACCB1D606` | `1FE4A4B01B212AB2E7D4BCA7AE73D72568E66DE5396E92FDE5707723BC054F18` |
+| Tamanho | 6 546 857 bytes | 6 539 581 bytes | 6 533 933 bytes | 6 267 993 bytes |
+| versionName / versionCode | `0.1.0-beta.5` / `11` | `0.1.0-beta.4` / `4` | `0.1.0-beta.2` / `2` | `0.1.0-beta.1` / `1` |
 | Assinatura | v2, mesmo certificado | v2 | v2 |
 
 Relato de aparelho: [ANDROID_DEVICE.md](ANDROID_DEVICE.md). Assinatura: [ANDROID_SIGNING.md](ANDROID_SIGNING.md).

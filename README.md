@@ -60,8 +60,8 @@ A versão desta árvore é a **`v0.1.0-beta.5`** (Windows e Android). A publica�
 
 | Plataforma | Arquivo | SHA-256 |
 |---|---|---|
-| Windows 10/11 x64 | `PixelCut-Setup-0.1.0-beta.5.exe` | `57923AE1ED3B0FF1AB5DD274948907ADE4CAF9C0E5F9A43A626A851DCDD681A1` |
-| Android 7+ | `PixelCut-Android-0.1.0-beta.5.apk` | `AE999F2D6AD412EDE6B65172AFF75822F8205B16F0B78B46E4CC9901112D74A3` |
+| Windows 10/11 x64 | `PixelCut-Setup-0.1.0-beta.5.exe` | `DD83CCC767B29DF74E182E7C2235C2B6D297430057F268C1F2427EA66EACC537` |
+| Android 7+ | `PixelCut-Android-0.1.0-beta.5.apk` | `C6692D5F9B44586336CE4EDE383633DC1211CAE5ED8DBA8F22AA85E4DF7DFD0A` |
 | Fontes FFmpeg n6.1.1 | `PixelCut-ffmpeg-n6.1.1-corresponding-source.zip` | `27187E48A173F4096BDE53B2B9265C2C2703BA31F9DDD53F12B6BF27D1FB52F8` |
 
 Passo a passo: [docs/INSTALL.md](docs/INSTALL.md). Notas: [docs/RELEASE_NOTES_v0.1.0-beta.5.md](docs/RELEASE_NOTES_v0.1.0-beta.5.md).
