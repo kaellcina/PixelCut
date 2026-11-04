@@ -13,13 +13,13 @@
 <p align="center">
   <img alt="Windows" src="https://img.shields.io/badge/Windows-10%2F11%20x64-0A84FF?style=flat-square">
   <img alt="Android" src="https://img.shields.io/badge/Android-7%2B-3DDC84?style=flat-square">
-  <img alt="Beta" src="https://img.shields.io/badge/versão-v0.1.0--beta.5-1D4ED8?style=flat-square">
+  <img alt="Beta" src="https://img.shields.io/badge/desenvolvimento-v0.1.0--beta.6-1D4ED8?style=flat-square">
   <img alt="Licença MIT" src="https://img.shields.io/badge/licença-MIT-22C55E?style=flat-square">
 </p>
 
 O PixelCut é uma beta pública gratuita para **Windows 10/11 (64 bits)** e **Android 7 ou superior**. Os projetos ficam no seu aparelho. Ele **não** é o CapCut e **não** tem ligação com a ByteDance.
 
-Windows e Android **não** têm os mesmos recursos. No Android, a exportação ainda grava **somente a faixa principal**.
+Windows e Android **não** têm os mesmos recursos. A árvore `feat/beta6` está ampliando a exportação Android gradualmente, sem remover os recursos da beta.5.
 
 ## Capturas de tela
 
@@ -50,21 +50,21 @@ No **Windows** você pode:
 - Salvar projetos com autosave
 - Exportar MP4 em H.264 + AAC, com o que está na linha do tempo — efeitos, transições, chroma, títulos, sobreposições, voz e música
 
-No **Android** a interface do editor é a mesma ideia (projetos, linha do tempo com agulha arrastável, preview e persistência ao fechar o app). A exportação usa o Media3 e **grava só a faixa principal** (corte, sequência, imagens paradas, velocidade, áudio original desse vídeo e as transições suportadas: dissolver, fade preto, flash e wipe).
+No **Android** a interface do editor é a mesma ideia (projetos, linha do tempo com agulha arrastável, preview e persistência ao fechar o app). A beta.6 em desenvolvimento exporta a faixa principal, volume do áudio original, faixas separadas de música/áudio, textos e sobreposições de imagem. As transições suportadas continuam sendo dissolver, fade preto, flash e wipe.
 
-**Não entram no MP4 do Android:** sobreposições, textos, chroma key, efeitos visuais do catálogo, cadeia de efeitos de voz, volume diferente de 100% nem a faixa de música separada. Outros presets de transição saem como dissolver. O preview no celular pode mostrar mais do que o arquivo final. Isso **não** é paridade com o Windows.
+**Ainda não entram no MP4 da beta.6 Android:** sobreposições de vídeo, chroma key, efeitos visuais sem equivalente Media3 e cadeia de efeitos de voz. Zoom, digitação progressiva, ajustes de cor/blur e vários presets simples já usam recursos nativos. As fontes usam famílias equivalentes do Android. Outros presets de transição saem como dissolver. O preview pode mostrar mais do que o arquivo final. Os novos recursos passaram pelos testes automatizados e pelo ensaio no Samsung SM-A546E com Android 16.
 
 ## Baixar o PixelCut
 
-A versão desta árvore é a **`v0.1.0-beta.5`** (Windows e Android). A publicação no GitHub **ainda não foi feita**. A última Release pública continua a [`v0.1.0-beta.4`](https://github.com/kaellcina/PixelCut/releases/tag/v0.1.0-beta.4). Os anexos das tags anteriores **não** foram alterados.
+Versão atual: **[`v0.1.0-beta.6`](https://github.com/kaellcina/PixelCut/releases/tag/v0.1.0-beta.6)**. As releases anteriores continuam disponíveis e seus anexos não foram alterados.
 
 | Plataforma | Arquivo | SHA-256 |
 |---|---|---|
-| Windows 10/11 x64 | `PixelCut-Setup-0.1.0-beta.5.exe` | `CD7DCECB3B76B0F0644B1D50F019D9E8BF6ED47DBC6E2A624F6D6D114BB1D48C` |
-| Android 7+ | `PixelCut-Android-0.1.0-beta.5.apk` | `1381919E9A32EF20EDE26F76F81770C538F23358145BDC7A133618DE07F12DCB` |
+| Windows 10/11 x64 | `PixelCut-Setup-0.1.0-beta.6.exe` | `04D481008D32A6F885C6FD1D1A00D8E84576F904679A71272FC8800B1D9936CE` |
+| Android 7+ | `PixelCut-Android-0.1.0-beta.6.apk` | `EC62FE34B69ABBA3574ED2E89B379119D27CD7CC6C0019EF5C70C6A40DAE280F` |
 | Fontes FFmpeg n6.1.1 | `PixelCut-ffmpeg-n6.1.1-corresponding-source.zip` | `27187E48A173F4096BDE53B2B9265C2C2703BA31F9DDD53F12B6BF27D1FB52F8` |
 
-Passo a passo: [docs/INSTALL.md](docs/INSTALL.md). Notas: [docs/RELEASE_NOTES_v0.1.0-beta.5.md](docs/RELEASE_NOTES_v0.1.0-beta.5.md).
+Passo a passo: [docs/INSTALL.md](docs/INSTALL.md). Notas: [beta.6](docs/RELEASE_NOTES_v0.1.0-beta.6.md).
 
 - **Windows:** baixe o EXE, confira o SHA-256, execute o instalador NSIS. O arquivo **não** tem assinatura Authenticode — o SmartScreen pode avisar. Isso é esperado nesta beta.
 - **Android:** o APK é **assinado** (esquema v2, mesma chave das betas anteriores) e distribuído **fora da Play Store**. Ative a instalação de fontes desconhecidas, confira o SHA-256 e instale. Para atualizar de uma beta anterior, **não** desinstale e **não** limpe os dados. Só desinstale um PixelCut de depuração (chave diferente).
@@ -79,7 +79,7 @@ Não use instaladores antigos (`PixelCut-Setup-0.1.0.exe`, `…-electron44.exe`,
 2. Confira o SHA-256:
 
    ```powershell
-   Get-FileHash .\PixelCut-Setup-0.1.0-beta.5.exe -Algorithm SHA256
+   Get-FileHash .\PixelCut-Setup-0.1.0-beta.6.exe -Algorithm SHA256
    ```
 
 3. Feche o PixelCut se estiver aberto
@@ -92,12 +92,12 @@ Não use instaladores antigos (`PixelCut-Setup-0.1.0.exe`, `…-electron44.exe`,
 2. Confira o SHA-256:
 
    ```powershell
-   Get-FileHash .\PixelCut-Android-0.1.0-beta.5.apk -Algorithm SHA256
+   Get-FileHash .\PixelCut-Android-0.1.0-beta.6.apk -Algorithm SHA256
    ```
 
 3. Se já tiver uma beta anterior, **não** desinstale: instale por cima (`versionCode` 11)
 4. Permita fontes desconhecidas e abra o APK
-5. Lembrete: a exportação no Android inclui **só a faixa principal**
+5. Lembrete: o APK público beta.5 exporta **só a faixa principal**; a beta.6 descrita acima ainda não foi publicada
 
 Detalhes: [docs/INSTALL.md](docs/INSTALL.md) e [docs/ANDROID.md](docs/ANDROID.md).
 
@@ -141,5 +141,5 @@ FFmpeg é marca de Fabrice Bellard.
 - Instalador Windows sem Authenticode (alerta do SmartScreen)
 - Preview e exportação podem divergir
 - No Windows, os projetos guardam caminhos locais absolutos
-- No Android, a exportação é só a faixa principal
+- No APK público beta.5, a exportação Android é só a faixa principal; a beta.6 em desenvolvimento amplia esse escopo
 - Sem remoção de fundo, máscaras, legendas automáticas, síntese de fala ou assistente de IA

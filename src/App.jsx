@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { CLIP_MOTIONS } from './catalog.js';
 import { togglePlaybackState } from './playback.js';
-import { buildProjectFromImportedMedia, clampPlayhead, clipLength, emptyProject, formatTime, historyReducer, projectDuration, transitionApplyId, uid, videoClipAt, videoLayout } from './store.js';
+import { buildProjectFromImportedMedia, clampPlayhead, clipLength, emptyProject, formatTime, historyReducer, projectDuration, splitTargetAt, transitionApplyId, uid, videoLayout } from './store.js';
 import { audioChainInfo, audioLatency, unlockAudio, voiceSelfTest } from './audioFx.js';
 import { createAutosave } from './projects/autosave.js';
 import { fingerprint, firstVisualMedia } from './projects/schema.js';
@@ -467,25 +467,15 @@ export default function App() {
   };
 
   const split = useCallback(() => {
-    let target = selection;
-    if (target?.track === 'transition') target = { track: 'video', id: target.id };
+    const target = splitTargetAt(project, time, selection);
     if (!target) {
-      const video = videoClipAt(project, time);
-      if (video) target = { track: 'video', id: video.clip.id };
-      else {
-        const audio = project.audioClips.find((clip) => time >= clip.start && time < clip.start + clipLength(clip));
-        const text = project.textClips.find((clip) => time >= clip.start && time < clip.start + clip.duration);
-        const overlay = (project.overlayClips || []).find((clip) => time >= clip.start && time < clip.start + clipLength(clip));
-        if (audio) target = { track: 'audio', id: audio.id };
-        else if (text) target = { track: 'text', id: text.id };
-        else if (overlay) target = { track: 'overlay', id: overlay.id };
-      }
+      announce('Posicione a agulha dentro de um clipe para cortar');
+      return;
     }
-    if (target) {
-      dispatch({ type: 'split', track: target.track, id: target.id, t: time, newId: uid() });
-      setCutToken((value) => value + 1);
-      announce('Cortado');
-    }
+    dispatch({ type: 'split', track: target.track, id: target.id, t: time, newId: uid() });
+    setSelection(target);
+    setCutToken((value) => value + 1);
+    announce('Cortado na agulha');
   }, [selection, project, time]);
 
   const remove = useCallback(() => {

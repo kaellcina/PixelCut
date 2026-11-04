@@ -140,4 +140,9 @@ public final class TransitionMath {
         }
         return 1f;
     }
+
+    public static float audioGainWithVolume(long localUs, long durationUs, long fadeInUs, long fadeOutUs, float volume) {
+        float safeVolume = Math.max(0f, Math.min(2f, volume));
+        return audioGain(localUs, durationUs, fadeInUs, fadeOutUs) * safeVolume;
+    }
 }

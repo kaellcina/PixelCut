@@ -179,6 +179,63 @@ export function videoClipAt(p, t) {
   return hits[hits.length - 1] || hits[0] || null;
 }
 
+function splittableRange(start, end, t) {
+  return Number.isFinite(t) && t - start >= MIN_CLIP && end - t >= MIN_CLIP;
+}
+
+// Resolve the clip under the playhead instead of blindly trusting a stale selection.
+// This matters on touch devices, where selecting a clip and then dragging the playhead
+// are separate gestures. The selected clip still wins when it actually covers the cut.
+export function splitTargetAt(p, t, selection = null) {
+  const requested = selection?.track === 'transition'
+    ? { track: 'video', id: selection.id }
+    : selection;
+  const layout = videoLayout(p?.videoClips || []);
+  const overlays = p?.overlayClips || [];
+  const audio = p?.audioClips || [];
+  const texts = p?.textClips || [];
+
+  const targetFor = (target) => {
+    if (!target?.id) return null;
+    if (target.track === 'video') {
+      const item = layout.find((entry) => entry.clip.id === target.id);
+      return item && splittableRange(item.start, item.end, t) ? { track: 'video', id: target.id } : null;
+    }
+    if (target.track === 'overlay') {
+      const clip = overlays.find((entry) => entry.id === target.id);
+      return clip && splittableRange(clip.start, clip.start + clipLength(clip), t) ? { track: 'overlay', id: target.id } : null;
+    }
+    if (target.track === 'audio') {
+      const clip = audio.find((entry) => entry.id === target.id);
+      return clip && splittableRange(clip.start, clip.start + clipLength(clip), t) ? { track: 'audio', id: target.id } : null;
+    }
+    if (target.track === 'text') {
+      const clip = texts.find((entry) => entry.id === target.id);
+      return clip && splittableRange(clip.start, clip.start + clip.duration, t) ? { track: 'text', id: target.id } : null;
+    }
+    return null;
+  };
+
+  const selected = targetFor(requested);
+  if (selected) return selected;
+
+  const videosAtTime = layout.filter((item) => t >= item.start && t <= item.end);
+  for (let index = videosAtTime.length - 1; index >= 0; index -= 1) {
+    const item = videosAtTime[index];
+    if (splittableRange(item.start, item.end, t)) return { track: 'video', id: item.clip.id };
+  }
+  for (const clip of audio) {
+    if (splittableRange(clip.start, clip.start + clipLength(clip), t)) return { track: 'audio', id: clip.id };
+  }
+  for (const clip of texts) {
+    if (splittableRange(clip.start, clip.start + clip.duration, t)) return { track: 'text', id: clip.id };
+  }
+  for (const clip of overlays) {
+    if (splittableRange(clip.start, clip.start + clipLength(clip), t)) return { track: 'overlay', id: clip.id };
+  }
+  return null;
+}
+
 export function sourcePreviewTime(clip, timelineTime, layerStart, fps = 30) {
   if (!clip) return 0;
   const start = Number(clip.in) || 0;

@@ -2,6 +2,7 @@
 node_modules/
 dist/
 release/
+release-*/
 *.log
 
 # Duplicate leftover at the PixelCut folder root (real module is electron/ffmpeg.cjs)

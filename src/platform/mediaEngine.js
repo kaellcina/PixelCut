@@ -1,6 +1,6 @@
 // Desktop export stays in electron/ffmpeg.cjs and is not loaded here.
-// Android can encode the main track. Transitions, overlays, text, chroma,
-// grades and voice effects stay listed below and are not reported as done.
+// Android can encode the main track, audio, text, image overlays and a native effect subset.
+// Video overlays, chroma, remaining grades and voice effects stay listed below.
 
 export const EXPORT_UNAVAILABLE = 'A exportação ainda não grava MP4 neste aparelho. A prévia usa o player do sistema, mas o FFmpeg do Windows não roda no Android.';
 
@@ -16,7 +16,7 @@ export function engineFor(kind) {
     return {
       id: 'media3-transformer',
       ready: true,
-      summary: 'Faixa principal em MP4: corte, sequência, dissolver, fade, wipe, imagens, velocidade e áudio original. Sobreposições, texto, chroma, efeitos visuais e a faixa de música não entram no arquivo.',
+      summary: 'MP4 com faixa principal, transições, velocidade, volume, músicas, textos, imagens sobrepostas e efeitos visuais compatíveis com Media3. Vídeos sobrepostos, chroma e efeitos avançados ainda não entram.',
     };
   }
   return {
@@ -32,7 +32,7 @@ export const ANDROID_NATIVE_GAPS = [
   {
     id: 'compose',
     desktop: 'Vários clipes e faixas entram num filtergraph do FFmpeg.',
-    android: 'A faixa principal é concatenada em corte seco ou sobreposta no overlap das transições. Sobreposição, texto e a faixa de áudio separada ficam de fora.',
+    android: 'A faixa principal, textos, sobreposições de imagem e faixas de áudio entram na composição. Vídeos sobrepostos ainda ficam de fora.',
   },
   {
     id: 'transition',
@@ -42,7 +42,7 @@ export const ANDROID_NATIVE_GAPS = [
   {
     id: 'zoom',
     desktop: 'zoompan a partir do centro, com a mesma curva da prévia.',
-    android: 'A animação de escala precisa de um efeito GL por quadro. A prévia CSS continua.',
+    android: 'O zoom da faixa principal usa uma matriz GL por clipe com a mesma curva smoothstep da prévia.',
   },
   {
     id: 'chroma',
@@ -52,17 +52,17 @@ export const ANDROID_NATIVE_GAPS = [
   {
     id: 'overlay',
     desktop: 'Overlay com opacidade, escala e fade em curva smoothstep.',
-    android: 'Os clipes de sobreposição não entram no arquivo. A composição do Transformer não faz o fade em curva da prévia.',
+    android: 'Imagens entram com posição, escala, opacidade, entrada e zoom. Vídeos sobrepostos ainda não entram.',
   },
   {
     id: 'grade',
     desktop: 'Filtros de cor, desfoque e os efeitos visuais do catálogo.',
-    android: 'Parte cabe em efeitos do Media3. A lista do catálogo ainda não foi mapeada.',
+    android: 'Brilho, contraste, saturação, blur, P&B/noir, espelho, vivo, frio, glow, sonho, noite, teal, bleach e cartoon usam efeitos Media3. Os demais continuam avisados.',
   },
   {
     id: 'text',
     desktop: 'drawtext com as fontes de C:/Windows/Fonts.',
-    android: 'As fontes do Windows não existem no aparelho. O texto da prévia usa CSS.',
+    android: 'Texto, posição, estilos e animações entram como overlay bitmap, usando famílias equivalentes do Android. Digitação é progressiva.',
   },
   {
     id: 'voice',
@@ -72,6 +72,6 @@ export const ANDROID_NATIVE_GAPS = [
   {
     id: 'audioMix',
     desktop: 'Volume do clipe e a faixa de música entram no mix.',
-    android: 'O áudio original do vídeo sai inteiro ou é removido. Volume parcial e a faixa de música não entram.',
+    android: 'Volume, trim, velocidade, fades e faixas de música entram no mixer. Efeitos de voz ainda não entram.',
   },
 ];

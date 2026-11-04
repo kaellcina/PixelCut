@@ -53,6 +53,16 @@ public class TransitionMathTest {
     }
 
     @Test
+    public void clipVolumeMultipliesTransitionGainAndClamps() {
+        long duration = 1_000_000;
+        long fade = 200_000;
+        assertEquals(0.25f, TransitionMath.audioGainWithVolume(100_000, duration, fade, 0, 0.5f), 0.001f);
+        assertEquals(0.5f, TransitionMath.audioGainWithVolume(500_000, duration, fade, fade, 0.5f), 0.001f);
+        assertEquals(2f, TransitionMath.audioGainWithVolume(500_000, duration, 0, 0, 4f), 0.001f);
+        assertEquals(0f, TransitionMath.audioGainWithVolume(500_000, duration, 0, 0, -1f), 0.001f);
+    }
+
+    @Test
     public void hardCutsKeepFullOverlay() {
         assertEquals(1f, TransitionMath.overlayAlpha(null, 0.5f, true), 0.001f);
         assertTrue(TransitionMath.wipeVisible("dissolve", 0.2f, 0.2f, 0.5f, true));

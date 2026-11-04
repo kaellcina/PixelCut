@@ -13,17 +13,23 @@ final class TransitionGainProcessor extends BaseAudioProcessor {
     private final long fadeInUs;
     private final long fadeOutUs;
     private final long durationUs;
+    private final float volume;
     private long positionUs;
 
     TransitionGainProcessor(long fadeInUs, long fadeOutUs, long durationUs) {
+        this(fadeInUs, fadeOutUs, durationUs, 1f);
+    }
+
+    TransitionGainProcessor(long fadeInUs, long fadeOutUs, long durationUs, float volume) {
         this.fadeInUs = Math.max(0, fadeInUs);
         this.fadeOutUs = Math.max(0, fadeOutUs);
         this.durationUs = Math.max(1, durationUs);
+        this.volume = Math.max(0f, Math.min(2f, volume));
     }
 
     @Override
     public boolean isActive() {
-        return super.isActive() && (fadeInUs > 0 || fadeOutUs > 0);
+        return super.isActive() && (fadeInUs > 0 || fadeOutUs > 0 || Math.abs(volume - 1f) > 0.001f);
     }
 
     @Override
@@ -33,7 +39,7 @@ final class TransitionGainProcessor extends BaseAudioProcessor {
             && inputAudioFormat.encoding != C.ENCODING_PCM_FLOAT) {
             throw new AudioProcessor.UnhandledAudioFormatException(inputAudioFormat);
         }
-        if (fadeInUs <= 0 && fadeOutUs <= 0) return AudioProcessor.AudioFormat.NOT_SET;
+        if (fadeInUs <= 0 && fadeOutUs <= 0 && Math.abs(volume - 1f) <= 0.001f) return AudioProcessor.AudioFormat.NOT_SET;
         return inputAudioFormat;
     }
 
@@ -52,7 +58,7 @@ final class TransitionGainProcessor extends BaseAudioProcessor {
         ByteBuffer output = replaceOutputBuffer(remaining);
         if (encoding == C.ENCODING_PCM_FLOAT) {
             while (inputBuffer.remaining() >= 4 * channels) {
-                float gain = TransitionMath.audioGain(positionUs, durationUs, fadeInUs, fadeOutUs);
+                float gain = TransitionMath.audioGainWithVolume(positionUs, durationUs, fadeInUs, fadeOutUs, volume);
                 for (int channel = 0; channel < channels; channel++) {
                     output.putFloat(inputBuffer.getFloat() * gain);
                 }
@@ -60,7 +66,7 @@ final class TransitionGainProcessor extends BaseAudioProcessor {
             }
         } else {
             while (inputBuffer.remaining() >= 2 * channels) {
-                float gain = TransitionMath.audioGain(positionUs, durationUs, fadeInUs, fadeOutUs);
+                float gain = TransitionMath.audioGainWithVolume(positionUs, durationUs, fadeInUs, fadeOutUs, volume);
                 for (int channel = 0; channel < channels; channel++) {
                     int sample = Math.round(inputBuffer.getShort() * gain);
                     if (sample > Short.MAX_VALUE) sample = Short.MAX_VALUE;

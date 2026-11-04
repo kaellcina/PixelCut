@@ -195,7 +195,7 @@
 .app.mobile .tl-pin { touch-action: none; }
 .app.mobile .tool-icon-button { width: 40px; min-height: 40px; }
 .app.mobile .zoom-fit { display: none; }
-.app.mobile .clip { touch-action: pan-y; }
+.app.mobile .clip { touch-action: none; }
 .app.mobile .handle {
   touch-action: none;
   width: 22px;

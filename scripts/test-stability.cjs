@@ -127,6 +127,17 @@ function check(name, condition, detail = '') {
   check('the playhead line is hittable away from the cap', playhead.isPlayheadHit(64 + 2 * 56, 2, 56, 64, true) === true);
   check('a 44px touch target still leaves clip bodies free', playhead.isPlayheadHit(64 + 2 * 56 + 40, 2, 56, 64, true) === false);
   check('touch hit is wider than mouse hit', playhead.playheadHitHalf(true) > playhead.playheadHitHalf(false));
+  const panned = playhead.timelinePanPosition({
+    startLeft: 500, startTop: 80, pointerDeltaX: -120, pointerDeltaY: 30, maxLeft: 2000, maxTop: 300,
+  });
+  check('dragging the timeline left pans forward without moving the playhead', panned.left === 620 && panned.top === 50);
+  const panStart = playhead.timelinePanPosition({
+    startLeft: 20, startTop: 10, pointerDeltaX: 100, pointerDeltaY: 100, maxLeft: 2000, maxTop: 300,
+  });
+  check('timeline finger pan stays inside both scroll bounds', panStart.left === 0 && panStart.top === 0);
+  check('small touch jitter on a clip stays a tap', playhead.touchClipGesture({ deltaX: 5, deltaY: 3 }) === 'pending');
+  check('immediate finger drag on a clip pans the timeline', playhead.touchClipGesture({ deltaX: 20, deltaY: 2 }) === 'pan');
+  check('a held clip can still be moved after the long press', playhead.touchClipGesture({ deltaX: 20, deltaY: 2, moveReady: true }) === 'move');
   check('the middle of the timeline does not auto-scroll', playhead.edgeScrollDelta(200, 400) === 0);
   check('edge speed is progressive', Math.abs(playhead.edgeScrollDelta(0, 400)) > Math.abs(playhead.edgeScrollDelta(30, 400)));
   const rightEdge = playhead.scrubAutoScroll({
@@ -191,6 +202,15 @@ function check(name, condition, detail = '') {
   check('undo restores the uncut clip', cutState.present.videoClips.length === 1 && cutState.present.videoClips[0].out === 10);
   cutState = store.historyReducer(cutState, { type: 'redo' });
   check('redo reapplies the cut', cutState.present.videoClips.length === 2);
+  const staleSelectionTarget = store.splitTargetAt(cutState.present, 7, { track: 'video', id: 'v' });
+  check('cut follows the playhead when mobile selection still points at another clip', staleSelectionTarget?.id === 'v2');
+  const edgeTarget = store.splitTargetAt(cutState.present, 2.5, { track: 'video', id: 'v' });
+  check('cut at an existing edge is refused instead of reporting a false success', edgeTarget === null);
+  const selectedAudioProject = {
+    ...cutState.present,
+    audioClips: [{ id: 'music', mediaId: 'm', start: 1, in: 0, out: 5, speed: 1 }],
+  };
+  check('a selected music clip still wins when the playhead is inside it', store.splitTargetAt(selectedAudioProject, 3, { track: 'audio', id: 'music' })?.track === 'audio');
   const dur = store.projectDuration(cutState.present);
   check('the last clock value still maps to a clip', store.videoClipsAt(cutState.present, dur)[0]?.clip.id === 'v2');
   check('the last frame seeks before the decoder EOF', store.sourcePreviewTime({ in: 0, out: 10 }, 10, 0, 30) < 10);

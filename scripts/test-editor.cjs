@@ -461,13 +461,29 @@ async function testAndroidPlan(store) {
   check('speed shortens the shown duration and stays on the item', fast.items[0].speed === 2 && fast.items[0].durationMs === 2000 && fast.items[0].outMs === 4000);
 
   const quiet = plan.planMainExport({ ...project, videoClips: [clip('c1', 'a', { muted: true, volume: 0.4 })] });
-  check('a muted clip drops the original audio', quiet.items[0].keepAudio === false && !quiet.warnings.includes(plan.EXPORT_LIMITS.volume));
+  check('a muted clip drops the original audio', quiet.items[0].keepAudio === false && quiet.items[0].audioGain === 0);
   const partial = plan.planMainExport({ ...project, videoClips: [clip('c1', 'a', { volume: 0.4 })] });
-  check('partial volume is kept as original audio and disclosed', partial.items[0].keepAudio === true && partial.warnings.includes(plan.EXPORT_LIMITS.volume));
+  check('partial volume is encoded in the Android plan', partial.items[0].keepAudio === true && partial.items[0].audioGain === 0.4);
+  const boosted = plan.planMainExport({ ...project, videoClips: [clip('c1', 'a', { volume: 3 })] });
+  check('Android plan clamps gain to the editor maximum', boosted.items[0].audioGain === 2);
   const unlinked = plan.planMainExport({ ...project, videoClips: [clip('c1', 'a', { linkedAudio: false })] });
-  check('unlinked video audio is not kept', unlinked.items[0].keepAudio === false && unlinked.warnings.includes(plan.EXPORT_LIMITS.audioTrack));
+  check('unlinked video audio is not kept on the main item', unlinked.items[0].keepAudio === false && unlinked.items[0].audioGain === 0);
   const silent = plan.planMainExport({ ...project, media: [media('a', { hasAudio: false })], videoClips: [first] });
   check('a video without an audio track does not pretend to keep audio', silent.items[0].keepAudio === false);
+  const graded = plan.planMainExport({
+    ...project,
+    videoClips: [clip('c1', 'a', {
+      effects: ['bw', 'mirror', 'vivid'],
+      effectParams: { blur: 2, brightness: 0.1, contrast: 0.2, saturation: -0.25 },
+    })],
+  });
+  check('native Media3 effects are planned without an omission warning', !graded.warnings.includes(plan.EXPORT_LIMITS.effect));
+  check('Android effect plan preserves adjustments and catalog effects', (
+    graded.items[0].visualEffects.some((effect) => effect.type === 'blur' && effect.sigma === 1)
+    && graded.items[0].visualEffects.some((effect) => effect.type === 'brightness' && effect.amount === 0.1)
+    && graded.items[0].visualEffects.some((effect) => effect.type === 'mirror')
+    && graded.items[0].visualEffects.some((effect) => effect.type === 'hsl' && effect.saturation === -100)
+  ));
 
   const picture = media('still', { name: 'still.png', type: 'image', duration: 5, hasAudio: false, source: source('still').replace('.mp4', '.png') });
   const imagePlan = plan.planMainExport({
@@ -482,10 +498,87 @@ async function testAndroidPlan(store) {
     overlayClips: [{ id: 'o', mediaId: 'a', start: 0, in: 0, out: 2 }],
     textClips: [{ id: 't', text: 'UAU', start: 0, duration: 2 }],
     audioClips: [{ id: 'au', mediaId: 'a', start: 0, in: 0, out: 2 }],
-    videoClips: [clip('c1', 'a', { effects: ['frio'], zoom: { preset: 'in' }, chroma: { enabled: true }, audioEffects: ['eco'] })],
+    videoClips: [clip('c1', 'a', { effects: ['frio'], zoom: { preset: 'in', from: 1, to: 1.2, duration: 1.5 }, chroma: { enabled: true }, audioEffects: ['eco'] })],
   });
   check('only the main track becomes a sequence', rich.items.length === 1);
-  check('omitted effects are warnings, not exported fields', ['effect', 'zoom', 'chroma', 'overlay', 'text', 'audioTrack', 'voice'].every((key) => rich.warnings.includes(plan.EXPORT_LIMITS[key])));
+  check('separate audio becomes an Android audio sequence', rich.audioItems.length === 1 && rich.audioItems[0].source === source('a'));
+  check('video overlays remain disclosed instead of silently disappearing', rich.overlayItems.length === 0 && rich.warnings.includes(plan.EXPORT_LIMITS.overlay));
+  check('omitted effects are warnings, not exported fields', ['effect', 'chroma', 'overlay', 'voice'].every((key) => rich.warnings.includes(plan.EXPORT_LIMITS[key])));
+  check('main-track zoom keeps its curve parameters in the Android plan', (
+    rich.items[0].zoomPreset === 'in'
+    && rich.items[0].zoomFrom === 1
+    && rich.items[0].zoomTo === 1.2
+    && rich.items[0].zoomDurationMs === 1500
+  ));
+  check('Android text plan keeps content and timing', (
+    rich.textItems.length === 1
+    && rich.textItems[0].text === 'UAU'
+    && rich.textItems[0].startMs === 0
+    && rich.textItems[0].durationMs === 2000
+  ));
+  const animatedText = plan.planMainExport({
+    ...project,
+    textClips: [{
+      id: 'typed', text: 'Olá', start: 8, duration: 2, x: 0.25, y: 0.75, size: 72,
+      color: '#12abef', font: 'georgia', bold: false, italic: true, animation: 'typewriter',
+      animationDuration: 0.8, letterEffect: 'background', backgroundColor: 'rgba(1,2,3,0.5)',
+    }],
+  });
+  check('Android text timing can extend the output', animatedText.timelineMs === 10000);
+  check('typewriter timing is preserved for the Android bitmap overlay', (
+    animatedText.textItems[0].animation === 'typewriter'
+    && animatedText.textItems[0].animationDurationMs === 800
+  ));
+  check('Android text plan preserves position, font and style', (
+    animatedText.textItems[0].x === 0.25
+    && animatedText.textItems[0].y === 0.75
+    && animatedText.textItems[0].size === 72
+    && animatedText.textItems[0].font === 'georgia'
+    && animatedText.textItems[0].bold === false
+    && animatedText.textItems[0].italic === true
+    && animatedText.textItems[0].letterEffect === 'background'
+  ));
+  const overlayImage = plan.planMainExport({
+    ...project,
+    media: [...project.media, media('still', { type: 'image', name: 'logo.png', duration: 5 })],
+    overlayClips: [{
+      id: 'logo', mediaId: 'still', start: 7, in: 0, out: 3, x: 0.2, y: 0.3,
+      scale: 0.75, opacity: 0.4, layer: 'behind', lane: 1,
+      enter: { type: 'both', duration: 0.7, scale: 0.6 },
+      zoom: { preset: 'in', from: 1, to: 1.2, duration: 1.5 },
+    }],
+  });
+  check('image overlay enters the Android composition without an omission warning', overlayImage.overlayItems.length === 1 && !overlayImage.warnings.includes(plan.EXPORT_LIMITS.overlay));
+  check('image overlay plan preserves timing, position and motion', (
+    overlayImage.timelineMs === 10000
+    && overlayImage.overlayItems[0].startMs === 7000
+    && overlayImage.overlayItems[0].durationMs === 3000
+    && overlayImage.overlayItems[0].x === 0.2
+    && overlayImage.overlayItems[0].y === 0.3
+    && overlayImage.overlayItems[0].scale === 0.75
+    && overlayImage.overlayItems[0].opacity === 0.4
+    && overlayImage.overlayItems[0].enterType === 'both'
+    && overlayImage.overlayItems[0].zoomTo === 1.2
+  ));
+  const mixed = plan.planMainExport({
+    ...project,
+    audioClips: [{ id: 'au', mediaId: 'a', start: 1.25, in: 0.5, out: 3.5, speed: 2, volume: 0.35, fadeIn: 0.4, fadeOut: 0.6 }],
+  });
+  check('Android music plan keeps timing, trim, speed, volume and fades', (
+    mixed.audioItems[0].startMs === 1250
+    && mixed.audioItems[0].inMs === 500
+    && mixed.audioItems[0].outMs === 3500
+    && mixed.audioItems[0].durationMs === 1500
+    && mixed.audioItems[0].speed === 2
+    && mixed.audioItems[0].audioGain === 0.35
+    && mixed.audioItems[0].fadeInMs === 400
+    && mixed.audioItems[0].fadeOutMs === 600
+  ));
+  const tailMusic = plan.planMainExport({
+    ...project,
+    audioClips: [{ id: 'tail', mediaId: 'a', start: 8, in: 0, out: 4, speed: 1, volume: 1 }],
+  });
+  check('music can extend the Android output duration', tailMusic.timelineMs === 12000 && tailMusic.durationMs === 12000);
 
   let missing = '';
   try {

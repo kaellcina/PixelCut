@@ -5,7 +5,7 @@ import { captureMediaFrames, filmstripTileCount, frameAt, prefetchFilmstrips } f
 import { transitionById } from '../catalog.js';
 import { drawWaveform, loadWaveform } from '../waveform.js';
 import { overlayLanes, visibleTimelineTracks } from '../timelineTracks.js';
-import { isPlayheadHit, playheadNeedsFollow, playheadScrollLeft, playheadX, scrubAutoScroll } from '../playheadView.js';
+import { isPlayheadHit, playheadNeedsFollow, playheadScrollLeft, playheadX, scrubAutoScroll, timelinePanPosition, touchClipGesture } from '../playheadView.js';
 
 const HEADER = 48;
 const PPS_MIN = 8;
@@ -348,8 +348,16 @@ export default function Timeline({ project, time, duration, playing, selection, 
     event.preventDefault();
     event.stopPropagation();
     session.move = (moveEvent) => {
-      scroller.scrollLeft = left0 - (moveEvent.clientX - x0);
-      scroller.scrollTop = top0 - (moveEvent.clientY - y0);
+      const next = timelinePanPosition({
+        startLeft: left0,
+        startTop: top0,
+        pointerDeltaX: moveEvent.clientX - x0,
+        pointerDeltaY: moveEvent.clientY - y0,
+        maxLeft: Math.max(0, scroller.scrollWidth - scroller.clientWidth),
+        maxTop: Math.max(0, scroller.scrollHeight - scroller.clientHeight),
+      });
+      scroller.scrollLeft = next.left;
+      scroller.scrollTop = next.top;
     };
     window.addEventListener('pointermove', session.move);
     window.addEventListener('pointerup', session.stop);
@@ -403,23 +411,55 @@ export default function Timeline({ project, time, duration, playing, selection, 
     let originX = event.clientX;
     let originStart = clip.start ?? 0;
     let dragging = false;
+    let panning = false;
+    let touchMoveReady = !finger;
     let currentTrack = track;
     const threshold = finger ? 12 : 6;
+    const scroller = scrollRef.current;
+    const left0 = scroller?.scrollLeft || 0;
+    const top0 = scroller?.scrollTop || 0;
+    let holdTimer = finger ? window.setTimeout(() => { touchMoveReady = true; }, 360) : 0;
     const session = arm(event, (cancelled) => {
+      if (holdTimer) window.clearTimeout(holdTimer);
       setMovingId(null);
       setDragDx(0);
       setDragOverTrack(null);
       if (dragging) dispatch({ type: cancelled ? 'cancelGesture' : 'endGesture' });
-    }, { capture: false });
+    }, { capture: finger });
     if (!session) return;
+    if (finger) event.preventDefault();
     session.move = (moveEvent) => {
       const dx = moveEvent.clientX - x0;
       const dy = moveEvent.clientY - y0;
+      if (finger && !dragging) {
+        const gesture = panning ? 'pan' : touchClipGesture({ deltaX: dx, deltaY: dy, moveReady: touchMoveReady, threshold });
+        if (gesture === 'pending') return;
+        if (gesture === 'pan') {
+          panning = true;
+          if (holdTimer) {
+            window.clearTimeout(holdTimer);
+            holdTimer = 0;
+          }
+          followPlayhead.current = false;
+          if (!scroller) return;
+          const next = timelinePanPosition({
+            startLeft: left0,
+            startTop: top0,
+            pointerDeltaX: dx,
+            pointerDeltaY: dy,
+            maxLeft: Math.max(0, scroller.scrollWidth - scroller.clientWidth),
+            maxTop: Math.max(0, scroller.scrollHeight - scroller.clientHeight),
+          });
+          scroller.scrollLeft = next.left;
+          scroller.scrollTop = next.top;
+          return;
+        }
+      }
       if (!dragging) {
         if (Math.abs(dx) < threshold && Math.abs(dy) < threshold) return;
-        if (finger && Math.abs(dy) > Math.abs(dx)) {
-          session.stop({ type: 'pointercancel', pointerId: event.pointerId });
-          return;
+        if (holdTimer) {
+          window.clearTimeout(holdTimer);
+          holdTimer = 0;
         }
         dragging = true;
         setMovingId(clip.id);
@@ -643,7 +683,7 @@ export default function Timeline({ project, time, duration, playing, selection, 
               </div>
             </div>
 
-            <TrackRow label="V" name="Vídeo" type="video" hint="Vídeo principal" dragOverTrack={dragOverTrack} dropProps={dropProps} trackKey="video" onPointerDown={touch ? scrub : panTimeline} onPan={panTimeline} enabled empty={!layout.length}>
+            <TrackRow label="V" name="Vídeo" type="video" hint="Vídeo principal" dragOverTrack={dragOverTrack} dropProps={dropProps} trackKey="video" onPointerDown={panTimeline} onPan={panTimeline} enabled empty={!layout.length}>
               {layout.map((item, index) => {
                 const next = layout[index + 1];
                 return (
@@ -708,7 +748,7 @@ export default function Timeline({ project, time, duration, playing, selection, 
             </TrackRow>
 
             {shown.linked && (
-              <TrackRow label="A" name="Áudio" type="audio" hint="Áudio ligado" dragOverTrack={dragOverTrack} dropProps={dropProps} trackKey="linked" onPointerDown={touch ? scrub : panTimeline} onPan={panTimeline} empty={!layout.some((item) => isLinked(item.clip))}>
+              <TrackRow label="A" name="Áudio" type="audio" hint="Áudio ligado" dragOverTrack={dragOverTrack} dropProps={dropProps} trackKey="linked" onPointerDown={panTimeline} onPan={panTimeline} empty={!layout.some((item) => isLinked(item.clip))}>
                 {layout.filter((item) => isLinked(item.clip)).map((item) => {
                   const next = layout[layout.findIndex((entry) => entry.clip.id === item.clip.id) + 1];
                   const width = clipLaneWidthPx(item.end - item.start, pps);

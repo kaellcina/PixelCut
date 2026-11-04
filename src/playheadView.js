@@ -63,6 +63,28 @@ export function clampScrollLeft(scrollLeft, maxScroll) {
   return Math.max(0, Math.min(Math.max(0, Number(maxScroll) || 0), Number(scrollLeft) || 0));
 }
 
+export function timelinePanPosition({
+  startLeft,
+  startTop,
+  pointerDeltaX,
+  pointerDeltaY,
+  maxLeft,
+  maxTop,
+} = {}) {
+  const left = clampScrollLeft((Number(startLeft) || 0) - (Number(pointerDeltaX) || 0), maxLeft);
+  const top = Math.max(0, Math.min(
+    Math.max(0, Number(maxTop) || 0),
+    (Number(startTop) || 0) - (Number(pointerDeltaY) || 0),
+  ));
+  return { left, top };
+}
+
+export function touchClipGesture({ deltaX, deltaY, moveReady = false, threshold = 12 } = {}) {
+  const distance = Math.max(Math.abs(Number(deltaX) || 0), Math.abs(Number(deltaY) || 0));
+  if (distance < Math.max(1, Number(threshold) || 12)) return 'pending';
+  return moveReady ? 'move' : 'pan';
+}
+
 export function scrubAutoScroll({
   viewportX,
   viewWidth,
